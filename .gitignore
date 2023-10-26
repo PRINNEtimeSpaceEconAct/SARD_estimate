@@ -1,4 +1,6 @@
 .DS_Store
 *.gv
 *.png
-
+*.pdf
+*.svg
+datasets_it/

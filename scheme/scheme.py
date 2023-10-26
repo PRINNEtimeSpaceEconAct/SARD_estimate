@@ -1,23 +1,29 @@
 
+from pycallgraph import PyCallGraph
+from pycallgraph.output import GraphvizOutput
 
 def get_data(fileLocation):
     """
     read all data from files
     """
-    shp = geo = y0 = yT = s = None
-    return shp, geo, y0, yT, s
+    shp = df = None
+    return shp, df
 
 def create_df(fileLocation):
     """
     create dataframe starting from shp and initial and final data, 
     and exogenous variables. data contains also coordinates of municipalities,
-    data: geo | y0 | yT | delta | s | coord (°)
+    df : geo | y0 | yT | delta | ones | s | coordx (°) | coordy (°)
+    remark: delta already divided by tau
+    data: geo | y0 | yT | delta | ones | s | coordx (°) | coordy (°)
+    shp_data is the shape of only observation considered
     """
-    shp, geo, y0, yT, s = get_data(fileLocation)
+    shp, df = get_data(fileLocation)
     data = None    
-    return data
+    shp_data = None
+    return data, shp_data
 
-def LogLikAICc(data, coefs, dof, xS, xA, xR, xD, MS, MA, MR, MD, Weps):
+def LogLikAICc(data, coef, k, xS, xA, xR, xD, MS, MA, MR, MD, W_eps):
     """
     compute LogLik and AICc of the SARD Model, with dof degree of freedom
     coefs is of length 11, in order
@@ -43,7 +49,7 @@ def GFDM(data):
     MsDeriv = None
     return MsDeriv
 
-def compute_WhA(D,hA):
+def compute_WhA(D,hmax):
     """
     compute the weight matrix WhA given the mtarices of all the distances 
     and the cut-off threshold hA
@@ -51,7 +57,7 @@ def compute_WhA(D,hA):
     WhA = None
     return WhA
 
-def compute_WhR(D,hR):
+def compute_WhR(D,hmax):
     """
     compute the weight matrix WhR given the mtarices of all the distances 
     and the cut-off threshold hR
@@ -67,21 +73,14 @@ def compute_xS(data,MsDeriv):
     xS = None
     return xS
 
-def compute_xA(data,MsDeriv, WhA):
-    """
-    compute regressor related to gamma_A
-    """
-    y0 = None # data$y0
-    xA = None
-    return xA
 
-def compute_xR(data,MsDeriv, WhR):
+def compute_xAR(data,MsDeriv, Wh):
     """
-    compute regressor related to gamma_R
+    compute regressor related to gamma_A, gamma_R
     """
     y0 = None # data$y0
-    xR = None
-    return xR
+    xAR = None
+    return xAR
 
 
 def compute_xD(data,MsDeriv):
@@ -101,21 +100,13 @@ def compute_MSLag(data,MsDeriv):
     MS = None
     return MS
 
-def compute_MALag(data,MsDeriv,WhA):
+def compute_MARLag(data,MsDeriv,Wh):
     """
-    compute the lag matrix MA
-    """
-    y0 = delta = None # data$y0, data$delta
-    MA = None
-    return MA
-
-def compute_MRLag(data,MsDeriv,WhR):
-    """
-    compute the lag matrix MR
+    compute the lag matrix MA, MR
     """
     y0 = delta = None # data$y0, data$delta
-    MR = None
-    return MR
+    MAR = None
+    return MAR
 
 def compute_MDLag(MsDeriv):
     """
@@ -132,18 +123,18 @@ def estimate_IV_SARD(data,MsDeriv,xS,xD,MS,MD,D,hA,hR):
 
     WhA = compute_WhA(D,hA)
     WhR = compute_WhA(D,hR)
-    xA = compute_xA(data,MsDeriv, WhA)
-    xR = compute_xR(data,MsDeriv, WhR)
-    MA = compute_MALag(data,MsDeriv,WhA)
-    MR = compute_MRLag(data,MsDeriv,WhR)
+    xA = compute_xAR(data,MsDeriv, WhA)
+    xR = compute_xAR(data,MsDeriv, WhR)
+    MA = compute_MARLag(data,MsDeriv,WhA)
+    MR = compute_MARLag(data,MsDeriv,WhR)
 
     MS2X = MA2X = MR2X = MD2X = None # instruments for IV
 
     IV_est = None # estimate via IV
-    coefs = dof = Weps = None # coefs = IV_est$coefs + 0 lambda, dof = 6, Weps = I
-    LogLik, AICc = LogLikAICc(data, coefs, dof, xS, xA, xR, xD, MS, MA, MR, MD, Weps)
+    coef = nparam = W_eps = None # coef = IV_est$coef + 0 lambda, nparam = 6, W_eps = I
+    LogLik, AICc = LogLikAICc(data, coef, nparam, xS, xA, xR, xD, MS, MA, MR, MD, W_eps)
 
-    return IV_est, AICc
+    return IV_est, LogLik, AICc
 
 def chose_hAhR(data,hA_range,hR_range):
     MsDeriv = GFDM(data)
@@ -155,23 +146,98 @@ def chose_hAhR(data,hA_range,hR_range):
     MD = compute_MDLag(MsDeriv)
 
     for (hA_i,hR_i) in (hA_range,hR_range):
-        IV_est_i, AICc_i = estimate_IV_SARD(data,MsDeriv,xS,xD,MS,MD,D,hA_i,hR_i)
+        IV_est_i, LogLik_i, AICc_i = estimate_IV_SARD(data,MsDeriv,xS,xD,MS,MD,D,hA_i,hR_i)
     
     hABest = hRBest = None  # minimum of (AICc_i)
 
     return hABest,hRBest
 
 
+def estimate_WN_SARD(data,hA,hR):
+    """
+    Estimate WN SARD model (without spatial error) using julia to 
+    perform the minimization. 
+    """
+    MsDeriv = GFDM(data)
+    D = compute_D(data,dMax = 1.0)
+    WhA = compute_WhA(D,hA)
+    WhR = compute_WhA(D,hR)
+    xS = compute_xS(data,MsDeriv)
+    xA = compute_xAR(data,MsDeriv, WhA)
+    xR = compute_xAR(data,MsDeriv, WhR)
+    xD = compute_xD(data,MsDeriv)
+    MS = compute_MSLag(data,MsDeriv)
+    MA = compute_MARLag(data,MsDeriv,WhA)
+    MR = compute_MARLag(data,MsDeriv,WhR)
+    MD = compute_MDLag(MsDeriv)
 
+    IV_est, LogLik, AICc = estimate_IV_SARD(data,MsDeriv,xS,xD,MS,MD,D,hA,hR)
+    coef_initial = None # IV_est$coef
+    coef, se_coef, pvalue_coef, residuals = call_julia_LogLik_WN(data,coef_initial,xS,xA,xR,xD,MS,MA,MR,MD)
+    nparam = W_eps = None # coef = coef + 0 lambda, nparam = 10, W_eps = I
+    LogLik, AICc = LogLikAICc(data, coef, nparam, xS, xA, xR, xD, MS, MA, MR, MD, W_eps)
+    allMat = (xS,xA,xR,xD,MS,MA,MR,MD)
+
+    return coef, se_coef, pvalue_coef, residuals, LogLik, AICc, allMat
+
+def call_julia_LogLik_WN(data,coef_initial,xS,xA,xR,xD,MS,MA,MR,MD):
+    """
+    In Julia minimize -LogLik of the WN SARD (no spatial error)
+    return coef, se_coef, pvalue_coef, residuals
+    """
+    coef = se_coef = pvalue_coef = residuals = None
+    return coef, se_coef, pvalue_coef, residuals
+
+def estimate_SARD(data,shp_data,hA,hR):
+    """
+    Estimate full SARD model with spatial error
+    perform first estimate_WN_SARD to get residuals and compute spatial error matrix
+    """
+
+    coef_WN, se_coef_WN, pvalue_coef_WN, residuals_WN, LogLik_WN, AICc_WN, allMat_WN = estimate_WN_SARD(data,hA,hR)
+    W_eps, lambdas, se_lambdas, pvalue_lambdas = compute_spatial_error_mat(shp_data,residuals_WN,20)
+
+    xS,xA,xR,xD,MS,MA,MR,MD = allMat_WN 
+    coef_initial = coef_WN # from estimate_WN_SARD
+    
+    coef, se_coef, pvalue_coef, residuals = call_julia_LogLik_SARD(data,coef_initial,xS,xA,xR,xD,MS,MA,MR,MD,W_eps)
+
+    nparam = None #  nparam = 11
+    LogLik, AICc = LogLikAICc(data, coef, nparam, xS, xA, xR, xD, MS, MA, MR, MD, W_eps)
+
+    return coef, se_coef, pvalue_coef, residuals, LogLik, AICc
+
+def compute_spatial_error_mat(shp_data,residuals,max_cont):
+    """
+    Compute the matrix of spatial errors by ... da vedere
+    rule of thumb to select max lambda is: 
+    the first significant followed by two consecutive lambda non significant at 5%
+    """
+    W_eps = lambdas = se_lambdas = pvalue_lambdas = None
+    return W_eps, lambdas, se_lambdas, pvalue_lambdas
+
+def call_julia_LogLik_SARD(data,coef_initial,xS,xA,xR,xD,MS,MA,MR,MD,W_eps):
+    """
+    In Julia minimize -LogLik of the full SARD model
+    return coef, se_coef, pvalue_coef, residuals
+    """
+    coef = se_coef = pvalue_coef = residuals = None
+    return coef, se_coef, pvalue_coef, residuals
 
 # input
 fileLocation = "cartella"   # shp, data
 hA_range = [1,2]
 hR_range = [3,4]
-data = create_df(fileLocation)
-
-hABest,hRBest = chose_hAhR(data,hA_range,hR_range)
-# da qui in poi maximum likelihood
 
 
+def main(fileLocation,hA_range,hR_range):
+    data, shp_data = create_df(fileLocation)
+    hABest,hRBest = chose_hAhR(data,hA_range,hR_range)
+    coef, se_coef, pvalue_coef, residuals, LogLik, AICc = estimate_SARD(data,shp_data,hABest,hRBest)
 
+    return None
+
+graphviz = GraphvizOutput()
+graphviz.output_file = 'basic.svg'
+with PyCallGraph(output=graphviz):   
+    main(fileLocation,hA_range,hR_range)
