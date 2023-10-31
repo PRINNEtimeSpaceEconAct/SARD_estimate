@@ -13,9 +13,9 @@ def create_df(fileLocation):
     """
     create dataframe starting from shp and initial and final data, 
     and exogenous variables. data contains also coordinates of municipalities,
-    df : geo | y0 | yT | delta | ones | s | coordx (°) | coordy (°)
+    df : geo | y0 | yT | delta | ones | s | Latitude | Longitude
     remark: delta already divided by tau
-    data: geo | y0 | yT | delta | ones | s | coordx (°) | coordy (°)
+    data: geo | y0 | yT | delta | ones | s | Latitude | Longitude
     shp_data is the shape of only observation considered
     """
     shp, df = get_data(fileLocation)
@@ -49,21 +49,13 @@ def GFDM(data):
     MsDeriv = None
     return MsDeriv
 
-def compute_WhA(D,hmax):
+def compute_WhAR(D,hMax):
     """
-    compute the weight matrix WhA given the mtarices of all the distances 
-    and the cut-off threshold hA
+    compute the weight matrix Wh given the mtarices of all the distances 
+    and the cut-off threshold hMax
     """
-    WhA = None
-    return WhA
-
-def compute_WhR(D,hmax):
-    """
-    compute the weight matrix WhR given the mtarices of all the distances 
-    and the cut-off threshold hR
-    """
-    WhR = None
-    return WhR
+    Wh = None
+    return Wh
 
 def compute_xS(data,MsDeriv):
     """
@@ -160,8 +152,8 @@ def estimate_WN_SARD(data,hA,hR):
     """
     MsDeriv = GFDM(data)
     D = compute_D(data,dMax = 1.0)
-    WhA = compute_WhA(D,hA)
-    WhR = compute_WhA(D,hR)
+    WhA = compute_WhAR(D,hA)
+    WhR = compute_WhAR(D,hR)
     xS = compute_xS(data,MsDeriv)
     xA = compute_xAR(data,MsDeriv, WhA)
     xR = compute_xAR(data,MsDeriv, WhR)
