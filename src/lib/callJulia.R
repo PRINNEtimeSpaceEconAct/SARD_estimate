@@ -11,6 +11,8 @@
 # on Linux: 
 # add on your .Renviron in /home/YOURUSERNAME
 # JULIA_BINDIR=/home/YOURUSERNAME/.local/share/R/JuliaCall/julia/1.8.0/julia-1.8.0/bin
+# or alternatively run
+# Sys.setenv(JULIA_BINDIR = "/home/YOURUSERNAME/.local/share/R/JuliaCall/julia/1.8.0/julia-1.8.0/bin")
 
 
 require(JuliaCall)
