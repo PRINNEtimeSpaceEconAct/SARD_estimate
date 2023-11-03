@@ -70,8 +70,8 @@ LogLikAICcR2 <- function(df, coef, k, xS, xA, xR, xD, MS, MA, MR, MD, W_eps){
     A = diag(N) - rhoS*MS - rhoA*MA - rhoR*MR - rhoD*MD
     B = diag(N) - lambda*W_eps
     spatY = A %*% as.numeric(Y)
-    beta = coef(lm(Y ~ X - 1))
-    # beta = solve( t(X) %*% X, t(X) %*% Y)
+    # beta = coef(lm(spatY ~ X - 1))
+    beta = solve( t(X) %*% X, t(X) %*% spatY)
     epsilon = spatY - X %*% beta
     
     mu = B %*% epsilon

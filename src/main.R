@@ -15,13 +15,14 @@ data = rawData$data
 shp_data = rawData$shp_data
 
 # old coordinates
-# load(file = "../df.tot.RData")
+# load(file = "df.tot.RData")
 # data$Latitude = df.tot$Latitude.old
 # data$Longitude = df.tot$Longitude.old
 
-outIVEstimate = estimate_IV_SARD_auto(data,hA,hR)
-
-
+# bestIV_est = chose_hAhR(data,hA_range,hR_range)
+# outIVEstimate = estimate_IV_SARD_auto(data,hA,hR)
+# outWNEstimate = estimate_WN_SARD_auto(data,hA,hR)
+outWNEstimate = estimate_SARD_auto(data,shp_data,hA,hR)
 
 
 

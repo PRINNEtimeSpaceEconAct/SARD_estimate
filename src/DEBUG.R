@@ -89,9 +89,10 @@ cbind(df.tot$xS, df.tot$xS.old)
 cbind(df.tot$xA, df.tot$xA.old)
 cbind(df.tot$MSDelta, df.tot$MSDelta.old)
 cbind(df.tot$s, df.tot$s.old)
+distCoord = sqrt(rowSums((cbind(df.tot$Latitude,df.tot$Longitude) - cbind(df.tot$Latitude.old,df.tot$Longitude.old))^2))
 
 
-# CHECK SHP LAT LONG ---
+# CHECK SHP LAT LONG ----
 library(rgdal)
 allFiles = dir(folderName)
 shpFile = allFiles[endsWith(allFiles,".shp")]
@@ -112,3 +113,5 @@ coord.new = st_coordinates(shp.new)
 
 distCoord = sqrt(rowSums((coord.new - coord.old)^2))
 max(distCoord)
+
+

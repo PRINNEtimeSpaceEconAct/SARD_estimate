@@ -60,12 +60,16 @@ create_df <- function(fileLocation, minDist=21, initialYear=2008, finalYear=2019
 
     shpCommon <- st_transform(shpCommon, 
                               "+proj=utm +zone=32 +datum=WGS84 +no_defs")
-    shpCommon <- suppressWarnings(st_centroid(shpCommon,
-                                              of_largest_polygon = TRUE))
+    
+    shpCentroids <- suppressWarnings(st_centroid(shpCommon,
+                                                    of_largest_polygon = TRUE))
+
+    shpCentroids <- st_transform(shpCentroids, "+proj=longlat  +datum=WGS84 +no_defs")
+    
     shpCommon <- st_transform(shpCommon, "+proj=longlat  +datum=WGS84 +no_defs")
-    shpCommon <- shpCommon %>%
-        dplyr::mutate(Longitude = sf::st_coordinates(.)[,1],
-                      Latitude = sf::st_coordinates(.)[,2])
+    shpCommon <- cbind(shpCommon, Longitude = sf::st_coordinates(shpCentroids)[,1],
+                       Latitude = sf::st_coordinates(shpCentroids)[,2])
+    
    
     distances <- compute_D(shpCommon,dMax=minDist)
     
