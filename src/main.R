@@ -29,8 +29,8 @@ hR = bestIV_est$hRBest
 
 # outIVEstimate = estimate_IV_SARD_auto(data,hA,hR)
 # outWNEstimate = estimate_WN_SARD_auto(data,hA,hR)
-
 outWNEstimate = estimate_SARD_auto(data,shp_data,hA,hR)
+
 
 
 
