@@ -13,9 +13,24 @@
 # JULIA_BINDIR=/home/YOURUSERNAME/.local/share/R/JuliaCall/julia/1.8.0/julia-1.8.0/bin
 # or alternatively run
 # Sys.setenv(JULIA_BINDIR = "/home/YOURUSERNAME/.local/share/R/JuliaCall/julia/1.8.0/julia-1.8.0/bin")
+# possibly, run also 
+# JuliaCall::julia_setup(rebuild = TRUE)
 
 
 require(JuliaCall)
+
+guideInstallPrint <- function(){
+    print("Julia not present. Installing Julia 1.8")
+    print("On MAC after installation go to")
+    print("Settings -> Privacy and Security -> Open Anyway and run again")
+    print("on Linux: ")
+    print("add on your .Renviron in /home/YOURUSERNAME")
+    print("JULIA_BINDIR=/home/YOURUSERNAME/.local/share/R/JuliaCall/julia/1.8.0/julia-1.8.0/bin")
+    print("or alternatively run")
+    print('Sys.setenv(JULIA_BINDIR = "/home/YOURUSERNAME/.local/share/R/JuliaCall/julia/1.8.0/julia-1.8.0/bin")')
+    print("possibly, run also ")
+    print('JuliaCall::julia_setup(rebuild = TRUE)')
+}
 
 initJulia <- function(){
     if (DEBUG == TRUE){ print("initializing Julia") }
@@ -25,9 +40,7 @@ initJulia <- function(){
     tryCatch({julia <- julia_setup(verbose=FALSE,installJulia=FALSE)}, 
         warning = function(w){}, 
         error = function(e) { 
-        print("Julia not present. Installing Julia 1.8")
-        print("On MAC after installation go to")
-        print("Settings -> Privacy and Security -> Open Anyway and run again")
+        guideInstallPrint()
         install_julia(version="1.8.0")
         julia <- julia_setup(verbose=FALSE,installJulia=FALSE)})
 
