@@ -79,8 +79,8 @@ estimate_IV_SARD_hAhRGiven <- function(df,MsDeriv,xS,xD,MS,MD,D,hA,hR) {
     WhR = compute_WhAR(D,df,hR)
     xA = compute_xAR(df,MsDeriv, WhA)
     xR = compute_xAR(df,MsDeriv, WhR)
-    MA = compute_MARLag(df,MsDeriv,WhA,parallel=TRUE)
-    MR = compute_MARLag(df,MsDeriv,WhR,parallel=TRUE)
+    MA = compute_MARLag(df,MsDeriv,WhA)
+    MR = compute_MARLag(df,MsDeriv,WhR)
 
     X = as.matrix(cbind(df$ones,df$y0,xS,xA,xR,xD))
     
