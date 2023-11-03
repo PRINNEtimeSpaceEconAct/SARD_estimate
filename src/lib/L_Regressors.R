@@ -56,7 +56,7 @@ compute_MSLag <- function(df,MsDeriv){
     return(MS)
 }
 
-compute_MARLag <- function(df,MsDeriv,Wh,parallel=FALSE,nproc=4){
+compute_MARLag <- function(df,MsDeriv,Wh){
     # compute the lag matrix MA or MR, depending on Wh
     
     if (DEBUG == TRUE){ print("computing MARLag") }
@@ -71,11 +71,11 @@ compute_MARLag <- function(df,MsDeriv,Wh,parallel=FALSE,nproc=4){
             + My %*% (matrix(delta) * MyWh %*% matrix(y)) + 
             + My %*% (matrix(y) * MyWh %*% matrix(delta)) )
 
-    if (parallel == FALSE){
+    if (PARALLEL == FALSE){
         MAR = apply(diag(nrow(df)), 1, fAR, df$y0)
         MAR = as(MAR, "sparseMatrix")}
-    if (parallel == TRUE){
-        parallelCluster <- snow::makeCluster(nproc,type = "SOCK")
+    if (PARALLEL == TRUE){
+        parallelCluster <- snow::makeCluster(NPROCS,type = "SOCK")
         clusterEvalQ(parallelCluster, library(Matrix))
         clusterExport(parallelCluster,c("Mx","My","MxWh","MyWh","df"),
                                                             envir=environment())

@@ -19,4 +19,6 @@ source("ML.R")
 
 # globals
 DEBUG = FALSE
+PARALLEL = FALSE
+NPROCS = 1
 

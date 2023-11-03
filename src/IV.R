@@ -24,7 +24,7 @@ chose_hAhR <- function(df,hA_range,hR_range) {
         print(paste("    Estimating IV (",i,"/",nrow(allPairs),"), with hA = ",
                                             hA_i,", and hR = ", hR_i ,sep=""))
         
-        outIVEstimate_i = estimate_IV_SARD(df,MsDeriv,xS,xD,MS,MD,D,hA_i,hR_i)
+        outIVEstimate_i = estimate_IV_SARD_hAhRGiven(df,MsDeriv,xS,xD,MS,MD,D,hA_i,hR_i)
         allAICc[[i]] = outIVEstimate_i$AICc
         allIV_est[[i]] = outIVEstimate_i$IV_est
     }
@@ -126,8 +126,8 @@ estimate_IV_SARD_auto <- function(df,hA,hR){
     xR = compute_xAR(df,MsDeriv, WhR)
     xD = compute_xD(df,MsDeriv)
     MS = compute_MSLag(df,MsDeriv)
-    MA = compute_MARLag(df,MsDeriv,WhA,parallel=TRUE)
-    MR = compute_MARLag(df,MsDeriv,WhR,parallel=TRUE)
+    MA = compute_MARLag(df,MsDeriv,WhA)
+    MR = compute_MARLag(df,MsDeriv,WhR)
     MD = compute_MDLag(MsDeriv)
     
     X = as.matrix(cbind(df$ones,df$y0,xS,xA,xR,xD))

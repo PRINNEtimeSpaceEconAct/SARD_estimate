@@ -2,8 +2,12 @@ rm(list = ls())
 
 source("lib/L_loadAll.R")
 DEBUG = TRUE
+PARALLEL = TRUE
+NPROCS = 4
 
 folderName = "../datasets_it/"
+
+juliaInit()
 
 hA_range = seq(from=5,to=20,by=5)
 hR_range = seq(from=20,to=100,by=5)
