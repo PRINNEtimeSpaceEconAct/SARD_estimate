@@ -80,7 +80,8 @@ compute_MARLag <- function(df,MsDeriv,Wh){
         clusterExport(parallelCluster,c("Mx","My","MxWh","MyWh","df"),
                                                             envir=environment())
         MAR = snow::parApply(parallelCluster,diag(nrow(df)),1,fAR,df$y0);
-        stopCluster(parallelCluster)}
+        stopCluster(parallelCluster)
+        gc()}
     
     MAR = as(MAR, "sparseMatrix")
 
