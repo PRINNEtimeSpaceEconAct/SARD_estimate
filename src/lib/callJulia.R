@@ -63,6 +63,7 @@ initJulia <- function(){
 
 call_julia_LogLik_WN <- function(X,Y,MS,MA,MR,MD,initialCondition){
     
+    initJulia()
     julia_command('include("lib/call_julia_LogLik.jl")')
     julia_assign("X",X)
     julia_assign("Y",Y)
@@ -83,6 +84,7 @@ call_julia_LogLik_WN <- function(X,Y,MS,MA,MR,MD,initialCondition){
 
 call_julia_LogLik <- function(X,Y,MS,MA,MR,MD,Weps,initialCondition){
     
+    initJulia()
     julia_command('include("lib/call_julia_LogLik.jl")')
     julia_assign("X",X)
     julia_assign("Y",Y)

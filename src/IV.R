@@ -31,9 +31,9 @@ chose_hAhR <- function(df,hA_range,hR_range) {
     
     iBest = which.min(allAICc)
     
-    hABest = allPairs[i,]$hA
-    hRBest = allPairs[i,]$hR
-    IV_est = allIV_est[[i]]
+    hABest = allPairs[iBest,]$hA
+    hRBest = allPairs[iBest,]$hR
+    IV_est = allIV_est[[iBest]]
 
     return (listN(hABest,hRBest,IV_est,allPairs,allAICc,allIV_est))
 

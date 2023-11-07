@@ -15,16 +15,17 @@ estimate_SARD_auto <- function(df,shp,hA,hR){
     xR = compute_xAR(df,MsDeriv, WhR)
     xD = compute_xD(df,MsDeriv)
     MS = compute_MSLag(df,MsDeriv)
-    MA = compute_MARLag(df,MsDeriv,WhA,parallel=TRUE)
-    MR = compute_MARLag(df,MsDeriv,WhR,parallel=TRUE)
+    MA = compute_MARLag(df,MsDeriv,WhA)
+    MR = compute_MARLag(df,MsDeriv,WhR)
     MD = compute_MDLag(MsDeriv)
     
     X = as.matrix(cbind(df$ones,df$y0,xS,xA,xR,xD))
     Y = as.matrix(df$delta)
     
+    IV_estimator = estimate_IV_SARD_allGiven(df,xS,xA,xR,xD,MS,MA,MR,MD)
     
     WN_SARD_est = estimate_WN_SARD_allGiven(df,xS,xA,xR,xD,MS,MA,MR,MD)
-    residualsSARD_WN = residWN_SARD_est$residualsSARD_WN
+    residualsSARD_WN = WN_SARD_est$residualsSARD_WN
     
     SpatError = compute_spatial_error_mat(residualsSARD_WN,shp)
     Werr = SpatError$Werr
@@ -32,7 +33,7 @@ estimate_SARD_auto <- function(df,shp,hA,hR){
     # initial condition of optimizer via WN SARD
     # initial spatial error to 0.5 
     allCoef = WN_SARD_est$coefSARD_WN
-    initialOptim = c(allCoef[6:10],0.5)
+    initialOptim = c(allCoef[7:10],0.5)
     
     # call julia optimization
     if (DEBUG == TRUE){ print("Starting Julia optimization for SARD") }
@@ -50,7 +51,7 @@ estimate_SARD_auto <- function(df,shp,hA,hR){
     R2N = LAR_LL$R2Nagelkerke
     
     return(listN(coefSARD, se_coefSARD, pvalue_coefSARD,
-                 residualsSARD,LogLik,AICc,R2N,IV_est,WN_SARD_est))
+                 residualsSARD,LogLik,AICc,R2N,IV_estimator,WN_SARD_est))
     
 }
 
@@ -71,8 +72,8 @@ estimate_WN_SARD_auto <- function(df,hA,hR){
     xR = compute_xAR(df,MsDeriv, WhR)
     xD = compute_xD(df,MsDeriv)
     MS = compute_MSLag(df,MsDeriv)
-    MA = compute_MARLag(df,MsDeriv,WhA,parallel=TRUE)
-    MR = compute_MARLag(df,MsDeriv,WhR,parallel=TRUE)
+    MA = compute_MARLag(df,MsDeriv,WhA)
+    MR = compute_MARLag(df,MsDeriv,WhR)
     MD = compute_MDLag(MsDeriv)
     
     X = as.matrix(cbind(df$ones,df$y0,xS,xA,xR,xD))
@@ -179,11 +180,11 @@ compute_spatial_error_mat <- function(residWN,shp,
     maxSignifLag = Position(function(x) x==TRUE,
         colSums(rbind(pValuesLarge,c(pValuesLarge[2:maxLag],FALSE))) == 2) - 1
     
-    Werr = lm.errDecompose$coefficients[1]*WPartial[1]
+    Werr = s.errDecompose$coefficients[1,"Estimate"]*WPartial[[1]]
     if (maxSignifLag == 1) return(listN(maxSignifLag,Werr,lm.errDecompose,spatialNeighbors.lag))
     
     for (i in 2:maxSignifLag){
-        Werr = Werr + lm.errDecompose$coefficients[i]*WPartial[i]}
+        Werr = Werr + s.errDecompose$coefficients[i,"Estimate"]*WPartial[[i]]}
         
     return(listN(maxSignifLag,Werr,lm.errDecompose,spatialNeighbors.lag))
 }
