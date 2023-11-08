@@ -49,6 +49,22 @@ compute_WhAR <- function(D,df,h){
     return(Wh)
 }
 
+compute_Wh <- function(D,df,h){
+    # weight matrices for spatial durbin
+    
+    if (DEBUG == TRUE){ print("computing W for spatial Durbin") }
+    
+    dInvSq <- function(d,cut) 1/d^2 * ((d <= cut) & (d > 0))
+    
+    W = dInvSq(D,h)
+    W[is.na(W)] = 0
+    W = W/rowSums(W)
+    W[is.na(W)] = 0
+    W = as(W,"sparseMatrix")
+
+    return(W)
+}
+
 LogLikAICcR2 <- function(df, coef, k, xS, xA, xR, xD, MS, MA, MR, MD, W_eps){
     # compute LogLik and AICc of the SARD Model, with dof degree of freedom
     # coefs is of length 11, in order
@@ -92,6 +108,21 @@ LogLikAICcR2 <- function(df, coef, k, xS, xA, xR, xD, MS, MA, MR, MD, W_eps){
     
     return(listN(LogLiKelyhood,AICc,R2Nagelkerke))
 }
+
+AICc2R2Nagelkerke <- function(aicc,Y,k){
+    # from AIC corrected to R^2 Nagelkerke
+    
+    N = nrow(Y)
+    
+    # null model
+    LL0 = logLik(lm(Y ~ 1))
+    LogLiKelyhood = (2*k*N/(N-k-1) - aicc)/2
+    
+    R2Nagelkerke =  c(1 - exp(-(2/N)*(LogLiKelyhood - LL0)))
+    
+    return(R2Nagelkerke)
+}
+
 
 listN <- function(...){
     # automatically give names to list elements = var name
