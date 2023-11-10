@@ -13,6 +13,10 @@ shp_data = rawData$shp_data
 # data$Latitude = df.tot$Latitude.old
 # data$Longitude = df.tot$Longitude.old
 
-h_range = seq(from=5,to=100,by=5)
-bestDURBIN_est = chose_hDurbin(data,h_range)
-    
+
+# h_range = seq(from=5,to=100,by=5)
+# bestDURBIN_est = chose_hDurbin(data,h_range)
+hBest = 25
+DURBINEstimate = estimate_DURBIN_auto(data,hBest)
+
+DURBINCorrelogram = correlogram(DURBINEstimate$DURBIN$residuals,shp_data,10)

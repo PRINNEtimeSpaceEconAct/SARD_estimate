@@ -28,12 +28,13 @@ hA = 10
 hR = 30
 
 # outIVEstimate = estimate_IV_SARD_auto(data,hA,hR)
-# outWNEstimate = estimate_WN_SARD_auto(data,hA,hR)
-outWNEstimate = estimate_SARD_auto(data,shp_data,hA,hR)
+# outSARD_WNEstimate = estimate_WN_SARD_auto(data,hA,hR)
+# outSARDEstimate = estimate_SARD_auto(data,shp_data,hA,hR)
 
-load("../outWNEstimate.RData")
+load("../outSARDEstimate.RData")
 
-
-
-
-
+correlogramSARD = correlogram(outSARDEstimate$residualsSARD,shp_data,maxLag = 10)
+correlogramSARD_WN = correlogram(outSARDEstimate$WN_SARD_est$residualsSARD_WN,shp_data,maxLag = 10)
+plot(seq(1,10,1),correlogramSARD$correlogram_resid$res[,1],pch=19,cex=1,ylim=c(0,0.25),ylab = "", xlab="Lags")
+points(seq(1,10,1),correlogramSARD_WN$correlogram_resid$res[,1],pch=19,cex=1,col="red")
+legend("topright",col=c("black","red"),c("SARD","SARD_WN"),pch=19)

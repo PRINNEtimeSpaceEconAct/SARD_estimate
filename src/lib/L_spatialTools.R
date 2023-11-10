@@ -131,4 +131,15 @@ listN <- function(...){
     anonList
 }
 
-
+correlogram <- function(resid,shp,maxLag = 20){
+    # make the spatial correlogram with contiguity matrices
+    
+    sf_use_s2(FALSE)
+    spatialNeighbors <- poly2nb(shp)
+    correlogram_resid = sp.correlogram(spatialNeighbors,as.numeric(resid),
+                    order = maxLag, style="B", method = "I",zero.policy = T)
+    
+    plot(correlogram_resid,main="")
+    
+    return(listN(correlogram_resid))
+}

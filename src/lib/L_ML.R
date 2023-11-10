@@ -41,7 +41,8 @@ estimate_SARD_auto <- function(df,shp,hA,hR){
     coefSARD = outSARD_Estimate$coef
     se_coefSARD = outSARD_Estimate$se_coef
     pvalue_coefSARD = outSARD_Estimate$pvalue_coef
-    residualsSARD = outSARD_Estimate$residuals
+    residualsSARD = outSARD_Estimate$residuals - coefSARD[11]*Werr %*% outSARD_Estimate$residuals
+    
     
     LAR_LL = LogLikAICcR2(df, coefSARD, 11, xS, xA, xR, xD, 
                           MS, MA, MR, MD, Werr)
@@ -51,7 +52,7 @@ estimate_SARD_auto <- function(df,shp,hA,hR){
     R2N = LAR_LL$R2Nagelkerke
     
     return(listN(coefSARD, se_coefSARD, pvalue_coefSARD,
-                 residualsSARD,LogLik,AICc,R2N,IV_estimator,WN_SARD_est))
+                 residualsSARD,SpatError,LogLik,AICc,R2N,IV_estimator,WN_SARD_est))
     
 }
 
@@ -84,7 +85,7 @@ estimate_WN_SARD_auto <- function(df,hA,hR){
     IV_est = IV_estimator$IV_est
     initialOptim = c(coef(IV_est)["MSDelta"],coef(IV_est)["MADelta"],
                      coef(IV_est)["MRDelta"],coef(IV_est)["MDDelta"])
-        
+    
     # call julia optimization
     if (DEBUG == TRUE){ print("Starting Julia optimization for WN SARD") }
     outSARD_WNEstimate = call_julia_LogLik_WN(X,Y,MS,MA,MR,MD,initialOptim)
@@ -155,16 +156,21 @@ compute_spatial_error_mat <- function(residWN,shp,
     
     WAll = list(); 
     WAll[[1]] = nb2mat(spatialNeighbors.lag[[1]],style="B",zero.policy = T)
+    WAll[[1]] = as(WAll[[1]],"sparseMatrix")
     WPartial = list(); 
     WPartial[[1]] = nb2mat(spatialNeighbors.lag[[1]],style="B",zero.policy = T) 
+    WPartial[[1]] = as(WPartial[[1]],"sparseMatrix")
     errCorPartial = list(); 
     errCorPartial[[1]] = WAll[[1]] %*% residWN
+    errCorPartial[[1]] = as.numeric(errCorPartial[[1]])
     
     for (i in 2:maxLag){
         print(i)
         WAll[[i]] = nb2mat(spatialNeighbors.lag[[i]],style="B",zero.policy = T)
+        WAll[[i]] = as(WAll[[i]],"sparseMatrix")
         WPartial[[i]] = WAll[[i]] - WAll[[i-1]]
         errCorPartial[[i]] = WPartial[[i]] %*% residWN
+        errCorPartial[[i]] = as.numeric(errCorPartial[[i]])
     }
     
     errCorPartialMatrix = matrix(unlist(errCorPartial),ncol=maxLag,byrow=FALSE)
@@ -176,15 +182,18 @@ compute_spatial_error_mat <- function(residWN,shp,
     
     # rule of thumb: 
     # magic: index of the first followed by 2 consecutive nonsignificant coefs
-    pValuesLarge = pValues > pThreshold
-    maxSignifLag = Position(function(x) x==TRUE,
-        colSums(rbind(pValuesLarge,c(pValuesLarge[2:maxLag],FALSE))) == 2) - 1
+    # pValuesLarge = pValues > pThreshold
+    # maxSignifLag = Position(function(x) x==TRUE,
+    #                         colSums(rbind(pValuesLarge,c(pValuesLarge[2:maxLag],FALSE))) == 2) - 1
+    
+    # fixed maxSignifLag =
+    maxSignifLag = 10
     
     Werr = s.errDecompose$coefficients[1,"Estimate"]*WPartial[[1]]
     if (maxSignifLag == 1) return(listN(maxSignifLag,Werr,lm.errDecompose,spatialNeighbors.lag))
     
     for (i in 2:maxSignifLag){
         Werr = Werr + s.errDecompose$coefficients[i,"Estimate"]*WPartial[[i]]}
-        
+    
     return(listN(maxSignifLag,Werr,lm.errDecompose,spatialNeighbors.lag))
 }
