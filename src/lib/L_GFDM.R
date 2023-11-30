@@ -5,7 +5,7 @@ require(Matrix)
 
 compute_MDiff <- function(coord){
     # select the ns k-neigh nodes to approximate derivatives
-    ns = 20
+    ns = min(20,nrow(coord)-1)
     Npt = dim(coord)[1]
 
     x = coord[,1]

@@ -50,6 +50,10 @@ initJulia <- function(){
     julia_install_package_if_needed("SparseArrays")
     julia_install_package_if_needed("Distributions")
     julia_install_package_if_needed("FiniteDiff")
+    julia_install_package_if_needed("StaticArrays")
+    julia_install_package_if_needed("CellListMap")
+    julia_install_package_if_needed("ForwardDiff")
+    julia_install_package_if_needed("ProgressMeter")
     
     julia_library("LinearAlgebra")
     julia_library("Optimization")
@@ -57,6 +61,12 @@ initJulia <- function(){
     julia_library("SparseArrays")
     julia_library("Distributions")
     julia_library("FiniteDiff")
+    julia_library("StaticArrays")
+    # julia_library("CellListMap")
+    julia_library("ForwardDiff")
+    julia_library("ProgressMeter")
+    
+    
     
     if (DEBUG == TRUE){ julia_command('println("Julia is working as intended")') }
 }
@@ -102,6 +112,45 @@ call_julia_LogLik <- function(X,Y,MS,MA,MR,MD,Weps,initialCondition){
     residuals = outJulia[[4]]
     
     return(listN(coef, se_coef, pvalue_coef, residuals))
+}
+
+call_julia_computeS <- function(NeS){
+    
+    initJulia()
+    julia_command
+    julia_command('include("lib/call_julia_montecarloAgents.jl")')
+    julia_assign("NeS",NeS)
+    
+    outJulia = julia_eval('computeS(NeS,Sfun)')
+    X = outJulia[[1]]
+    Y = outJulia[[2]]
+    S = outJulia[[3]]
+    
+    return(listN(X, Y, S))
+}
+
+call_julia_computeAgents <- function(Nm,Na,tau,SARDp){
+    
+    initJulia()
+    julia_command('include("lib/call_julia_montecarloAgents.jl")')
+
+    julia_assign("Nm",Nm)
+    julia_assign("Na",Na)
+    julia_assign("tau",tau)
+
+    julia_assign("gammaS",SARDp$gammaS)
+    julia_assign("gammaA",SARDp$gammaA)
+    julia_assign("gammaR",SARDp$gammaR)
+    julia_assign("gammaD",SARDp$gammaD)
+    julia_assign("hA",SARDp$hA)
+    julia_assign("hR",SARDp$hR)
+    julia_command("SARDp = (gammaS = gammaS,gammaA = gammaA,gammaR = gammaR,gammaD = gammaD,hA = hA,hR = hR)")
+    
+    outJulia = julia_eval('computeAgents(Nm,Na,tau,SARDp)')
+    agents0_MC = outJulia[[1]]
+    agentsT_MC = outJulia[[2]]
+    
+    return(listN(agents0_MC, agentsT_MC))
 }
 
 

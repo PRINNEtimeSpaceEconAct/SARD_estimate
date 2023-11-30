@@ -25,7 +25,8 @@ get_data <- function(fileLocation) {
     return(list(df=df, shp=shp_sf))
 }
 
-create_df <- function(fileLocation, minDist=21, initialYear=2008, finalYear=2019){
+create_df <- function(fileLocation, minDist=21, initialYear=2008, 
+                      finalYear=2019, longlat=TRUE){
     # input raw dataframe and shapefile
     # create dataframe starting from shp and initial and final data, 
     # and exogenous variables. data contains also coordinates of municipalities,
@@ -71,7 +72,7 @@ create_df <- function(fileLocation, minDist=21, initialYear=2008, finalYear=2019
                        Latitude = sf::st_coordinates(shpCentroids)[,2])
     
    
-    distances <- compute_D(shpCommon,dMax=minDist)
+    distances <- compute_D(shpCommon,dMax=minDist,longlat=longlat)
     
     shpCommonAllNeig <- shpCommon[rowSums(distances)!=0, ]
     dataCommonAllNeig <- data %>% filter(geo %in% shpCommonAllNeig$PRO_COM_T)

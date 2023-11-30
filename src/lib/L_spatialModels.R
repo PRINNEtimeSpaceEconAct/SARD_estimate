@@ -1,9 +1,9 @@
-chose_hDurbin <- function(df,h_range){
+chose_hDurbin <- function(df,h_range,longlat=TRUE){
     # select best h for Durbin model based on the AICc score
     
     print("            selecting best h for Durbin model")
     
-    D = compute_D(df)
+    D = compute_D(df,longlat=longlat)
     dInvSq <- function(d,cut) 1/d^2 * ((d <= cut) & (d > 0))
     
     allEstimated_DURBIN = list()
@@ -37,12 +37,12 @@ chose_hDurbin <- function(df,h_range){
 
 }
 
-estimate_DURBIN_auto <- function(df,h){
+estimate_DURBIN_auto <- function(df,h,longlat=TRUE){
     # Estimate DURBIN with distances h
     
     print("Estimating Durbin for given h")
     
-    D = compute_D(df)
+    D = compute_D(df,longlat=longlat)
     dInvSq <- function(d,cut) 1/d^2 * ((d <= cut) & (d > 0))
 
     W = compute_Wh(D,df,h)        

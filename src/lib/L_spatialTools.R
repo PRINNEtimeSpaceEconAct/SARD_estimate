@@ -2,23 +2,34 @@ require(spdep)
 require(Matrix)
 require(snow)
 
-compute_D <- function(df,dMax=100){
-    # dMax = 100Km by deafault. Assumes that we will never consider interaction
+compute_D <- function(df,dMax=100, longlat=TRUE){
+    # dMax = 100Km by default. Assumes that we will never consider interaction
     # at distance higher than 100Km.
+    # longlat = TRUE by default. Assume we want to consider great circle
+    # distance.
     # In DataFrame data we assume that Latitude Longitude are in degrees with
     # projection "+proj=longlat  +datum=WGS84  +no_defs"
     
     if (DEBUG == TRUE){ print("computing all distances") }
     
+    # coord = cbind(df$Longitude,df$Latitude)
+    # spatialNeighbors <- dnearneigh(coord, 0,dMax, row.names=NULL, longlat=TRUE)
+    # dlist <- nbdists(spatialNeighbors, coord, longlat=TRUE)
+    # dlist1 <- lapply(dlist, function(x) x)          
+    # spatialNeighbors <- suppressWarnings(nb2listw(spatialNeighbors,
+    #                               glist=dlist1, style="B", zero.policy=TRUE))
+    # D <- listw2mat(spatialNeighbors)
+    # D <- as(D, "sparseMatrix")
+    
     coord = cbind(df$Longitude,df$Latitude)
-    spatialNeighbors <- dnearneigh(coord, 0,dMax, row.names=NULL, longlat=TRUE)
-    dlist <- nbdists(spatialNeighbors, coord, longlat=TRUE)
+    spatialNeighbors <- dnearneigh(coord, 0,dMax, row.names=NULL, longlat=longlat)
+    dlist <- nbdists(spatialNeighbors, coord, longlat=longlat)
     dlist1 <- lapply(dlist, function(x) x)          
     spatialNeighbors <- suppressWarnings(nb2listw(spatialNeighbors,
-                                  glist=dlist1, style="B", zero.policy=TRUE))
+                                                  glist=dlist1, style="B", zero.policy=TRUE))
     D <- listw2mat(spatialNeighbors)
     D <- as(D, "sparseMatrix")
-    
+
     return(D)
 }
 

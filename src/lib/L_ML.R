@@ -1,4 +1,4 @@
-estimate_SARD_auto <- function(df,shp,hA,hR){
+estimate_SARD_auto <- function(df,shp,hA,hR,longlat=TRUE){
     # Estimate SARD via ML with distances hA, hR
     
     if (DEBUG == TRUE){ print("Estimating SARD for given hA hR") }
@@ -6,7 +6,7 @@ estimate_SARD_auto <- function(df,shp,hA,hR){
     initJulia()
     
     MsDeriv = GFDM(df)
-    D = compute_D(df)
+    D = compute_D(df,longlat=longlat)
     
     WhA = compute_WhAR(D,df,hA)
     WhR = compute_WhAR(D,df,hR)
@@ -56,7 +56,7 @@ estimate_SARD_auto <- function(df,shp,hA,hR){
     
 }
 
-estimate_WN_SARD_auto <- function(df,hA,hR){
+estimate_WN_SARD_auto <- function(df,hA,hR,longlat=TRUE){
     # Estimate SARD WN via ML with distances hA, hR
     
     if (DEBUG == TRUE){ print("Estimating SARD WN for given hA hR") }
@@ -64,7 +64,7 @@ estimate_WN_SARD_auto <- function(df,hA,hR){
     initJulia()
     
     MsDeriv = GFDM(df)
-    D = compute_D(df)
+    D = compute_D(df,longlat=longlat)
     
     WhA = compute_WhAR(D,df,hA)
     WhR = compute_WhAR(D,df,hR)
@@ -147,6 +147,7 @@ compute_spatial_error_mat <- function(residWN,shp,
     # rule of thumb: select as maximum contiguity for the spatial error
     # the first contiguity order that is followed by two consecutive 
     # nonsignificant coefficient in the decomposition
+    maxLag=min(maxLag, floor(sqrt(length(residWN))))
     
     sf_use_s2(FALSE)
     spatialNeighbors <- poly2nb(shp)
@@ -165,7 +166,6 @@ compute_spatial_error_mat <- function(residWN,shp,
     errCorPartial[[1]] = as.numeric(errCorPartial[[1]])
     
     for (i in 2:maxLag){
-        print(i)
         WAll[[i]] = nb2mat(spatialNeighbors.lag[[i]],style="B",zero.policy = T)
         WAll[[i]] = as(WAll[[i]],"sparseMatrix")
         WPartial[[i]] = WAll[[i]] - WAll[[i-1]]
@@ -180,15 +180,14 @@ compute_spatial_error_mat <- function(residWN,shp,
     s.errDecompose = summary(lm.errDecompose)
     pValues = s.errDecompose$coefficients[,"Pr(>|t|)"]
     
-    # rule of thumb: 
+    # rule of thumb:
     # magic: index of the first followed by 2 consecutive nonsignificant coefs
-    # pValuesLarge = pValues > pThreshold
-    # maxSignifLag = Position(function(x) x==TRUE,
-    #                         colSums(rbind(pValuesLarge,c(pValuesLarge[2:maxLag],FALSE))) == 2) - 1
+    pValuesLarge = pValues > pThreshold
+    maxSignifLag = max(Position(function(x) x==TRUE,
+                            colSums(rbind(pValuesLarge,c(pValuesLarge[2:maxLag],
+                                                         FALSE))) == 2) - 1,1)
     
-    # fixed maxSignifLag =
-    maxSignifLag = 10
-    
+
     Werr = s.errDecompose$coefficients[1,"Estimate"]*WPartial[[1]]
     if (maxSignifLag == 1) return(listN(maxSignifLag,Werr,lm.errDecompose,spatialNeighbors.lag))
     

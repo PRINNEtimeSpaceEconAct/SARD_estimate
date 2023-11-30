@@ -1,12 +1,12 @@
 require(AER)
 
-chose_hAhR <- function(df,hA_range,hR_range) {
+chose_hAhR <- function(df,hA_range,hR_range,longlat=TRUE) {
     # select best hA and hR based on the AICc score
     
     print("            selecting best hA hR via IV")
     
     MsDeriv = GFDM(df)
-    D = compute_D(df)
+    D = compute_D(df,longlat=longlat)
     
     xS = compute_xS(df,MsDeriv)
     xD = compute_xD(df,MsDeriv)
@@ -111,13 +111,13 @@ estimate_IV_SARD_hAhRGiven <- function(df,MsDeriv,xS,xD,MS,MD,D,hA,hR) {
     
 }
 
-estimate_IV_SARD_auto <- function(df,hA,hR){
+estimate_IV_SARD_auto <- function(df,hA,hR,longlat=TRUE){
     # Estimate SARD WN via IV with distances hA, hR
 
     print("Estimating IV for given hA hR") 
     
     MsDeriv = GFDM(df)
-    D = compute_D(df)
+    D = compute_D(df,longlat=longlat)
     
     WhA = compute_WhAR(D,df,hA)
     WhR = compute_WhAR(D,df,hR)

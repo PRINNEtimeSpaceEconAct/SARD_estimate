@@ -5,6 +5,7 @@ suppressPackageStartupMessages(library(spdep))
 suppressPackageStartupMessages(library(spatialreg))
 suppressPackageStartupMessages(library(gamlr))
 suppressPackageStartupMessages(library(sf))
+suppressPackageStartupMessages(library(sfheaders))
 suppressPackageStartupMessages(library(Matrix))
 suppressPackageStartupMessages(library(snow))
 suppressPackageStartupMessages(library(plm))
@@ -19,6 +20,9 @@ source("lib/L_callJulia.R")
 source("lib/L_IV.R")
 source("lib/L_ML.R")
 source("lib/L_spatialModels.R")
+source("lib/L_MonteCarloGeneration.R")
+source("lib/L_MonteCarloEstimation.R")
+
 
 # globals
 DEBUG = FALSE
