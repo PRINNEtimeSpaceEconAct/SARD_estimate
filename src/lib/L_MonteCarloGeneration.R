@@ -12,12 +12,14 @@ createShapeVoronoi <- function(N=100, typeOfDist="uniform", meanNorm=0.5,
     # check the number of feature after intersection
     voronoiSf <- matrix(0, nrow = 1, ncol = 1)
     while(nrow(voronoiSf)<N){
+        # print(nrow(voronoiSf))
         # create points to voronoi
         if (typeOfDist=="uniform"){
             voronoiPoints = st_multipoint(matrix(runif(n = 2*N),nrow = N, ncol = 2))
         }else{
-            voronoiPoints = st_multipoint(matrix(rnorm(n = 2*N, mean=meanNorm, 
-                                                       sd=sdNorm),nrow = N, ncol=2))
+            voronoiPoints = st_multipoint(gaussianMixBoundary(N,10))
+            # voronoiPoints = st_multipoint(matrix(rnorm(n = 2*N, mean=meanNorm, 
+                                                       # sd=sdNorm),nrow = N, ncol=2))
         }
         
         # compute voronoy polygon
@@ -56,6 +58,29 @@ createMountains <- function(X, Y, S, shp_sf){
     return(p_ag1$s)
 }
 
+gaussianMixBoundary <- function(N,NGaussiansPside=10){
+    sigma = 0.05
+    NGPS = NGaussiansPside
+    centers = seq(0,1,1/NGPS)
+    centers = centers[2:(NGPS-1)]
+    mu = cbind(rbind(centers,1),rbind(centers,0),rbind(1,centers),
+               rbind(0,centers),rbind(0,0),rbind(0,1),rbind(1,0),rbind(1,1))
+    Sigma = sigma * diag(1,nrow=2)
+    NsEachG = round(N/(4*(NGPS-1)))
+    samples = mvrnorm(n = NsEachG, mu = mu[,1],Sigma = Sigma)
+    for (i in 2:ncol(mu)){
+        samples = rbind(samples,mvrnorm(n = NsEachG, mu = mu[,i],Sigma = Sigma))
+    }
+    samples = samples[1:N,]
+    
+    samples[samples[,1]<0,1] = -samples[samples[,1]<0,1]
+    samples[samples[,1]>1,1] = 1-(samples[samples[,1]>1,1]-1)
+    samples[samples[,2]<0,2] = -samples[samples[,2]<0,2]
+    samples[samples[,2]>1,2] = 1-(samples[samples[,2]>1,2]-1)
+    
+    return(samples) 
+}
+
 # Create dataframe with all variables ----
 createDataframe <- function(agents0, agentsT, shp_sf, tau, X, Y, S){
     
@@ -63,15 +88,20 @@ createDataframe <- function(agents0, agentsT, shp_sf, tau, X, Y, S){
     # shp_data is the shape of only observation considered, that are dose 
     # that have at least one neighbor within distance minDist 
     
+    #km2 of each cell
+    km2 <- st_area(shp_sf)/sum(st_area(shp_sf))
+    
     agents0Sf = sf_point(agents0)
     st_crs(agents0Sf) ="WGS84"
     aggrAgents0 = lengths(st_intersects(shp_sf,agents0Sf))
-    y0 = aggrAgents0/sum(aggrAgents0)
+    y0 = aggrAgents0/(km2*sum(aggrAgents0))
+    # y0 = aggrAgents0/sum(aggrAgents0)
     
     agentsTSf = sf_point(agentsT)
     st_crs(agentsTSf) ="WGS84"
     aggrAgentsT = lengths(st_intersects(shp_sf,agentsTSf))
-    yT = aggrAgentsT/sum(aggrAgentsT)
+    yT = aggrAgentsT/(km2*sum(aggrAgentsT))
+    # yT = aggrAgentsT/sum(aggrAgentsT)
     
     #codes for cell
     geo = seq(1:length(y0))
@@ -85,8 +115,6 @@ createDataframe <- function(agents0, agentsT, shp_sf, tau, X, Y, S){
     #mountains! 
     s=createMountains(X, Y, S, shp_sf)
     
-    #km2 of each cell
-    km2 <- st_area(shp_sf)/1000000
     
     #Longitute and Latitude
     shpCentroids <- suppressWarnings(st_centroid(shp_sf,

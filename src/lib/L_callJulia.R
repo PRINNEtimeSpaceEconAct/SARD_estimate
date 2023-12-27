@@ -73,7 +73,7 @@ initJulia <- function(){
 
 call_julia_LogLik_WN <- function(X,Y,MS,MA,MR,MD,initialCondition){
     
-    initJulia()
+    # initJulia()
     julia_command('include("lib/call_julia_LogLik.jl")')
     julia_assign("X",X)
     julia_assign("Y",Y)
@@ -94,7 +94,7 @@ call_julia_LogLik_WN <- function(X,Y,MS,MA,MR,MD,initialCondition){
 
 call_julia_LogLik <- function(X,Y,MS,MA,MR,MD,Weps,initialCondition){
     
-    initJulia()
+    # initJulia()
     julia_command('include("lib/call_julia_LogLik.jl")')
     julia_assign("X",X)
     julia_assign("Y",Y)
@@ -116,7 +116,7 @@ call_julia_LogLik <- function(X,Y,MS,MA,MR,MD,Weps,initialCondition){
 
 call_julia_computeS <- function(NeS){
     
-    initJulia()
+    # initJulia()
     julia_command
     julia_command('include("lib/call_julia_montecarloAgents.jl")')
     julia_assign("NeS",NeS)
@@ -131,7 +131,7 @@ call_julia_computeS <- function(NeS){
 
 call_julia_computeAgents <- function(Nm,Na,tau,SARDp){
     
-    initJulia()
+    # initJulia()
     julia_command('include("lib/call_julia_montecarloAgents.jl")')
 
     julia_assign("Nm",Nm)

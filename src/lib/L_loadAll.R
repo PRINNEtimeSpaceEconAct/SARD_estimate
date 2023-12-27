@@ -1,5 +1,6 @@
 # libraries ----
 
+suppressPackageStartupMessages(library(MASS))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(spdep))
 suppressPackageStartupMessages(library(spatialreg))
@@ -25,6 +26,7 @@ source("lib/L_MonteCarloEstimation.R")
 
 
 # globals
+Sys.setenv(JULIA_NUM_THREADS = "8")
 DEBUG = FALSE
 PARALLEL = FALSE
 NPROCS = 1
