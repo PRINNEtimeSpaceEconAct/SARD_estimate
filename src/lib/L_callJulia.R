@@ -54,6 +54,8 @@ initJulia <- function(){
     julia_install_package_if_needed("CellListMap")
     julia_install_package_if_needed("ForwardDiff")
     julia_install_package_if_needed("ProgressMeter")
+    julia_install_package_if_needed("DifferentialEquations")
+    julia_install_package_if_needed("ImageFiltering")
     
     julia_library("LinearAlgebra")
     julia_library("Optimization")
@@ -65,7 +67,8 @@ initJulia <- function(){
     # julia_library("CellListMap")
     julia_library("ForwardDiff")
     julia_library("ProgressMeter")
-    
+    julia_library("DifferentialEquations")
+    julia_library("ImageFiltering")
     
     
     if (DEBUG == TRUE){ julia_command('println("Julia is working as intended")') }
@@ -153,4 +156,27 @@ call_julia_computeAgents <- function(Nm,Na,tau,SARDp){
     return(listN(agents0_MC, agentsT_MC))
 }
 
+call_julia_computePDE <- function(tau,SARDp){
+    
+    # initJulia()
+    julia_command('include("lib/call_julia_montecarloPDE.jl")')
+    
+    julia_assign("tau",tau)
+    
+    julia_assign("gammaS",SARDp$gammaS)
+    julia_assign("gammaA",SARDp$gammaA)
+    julia_assign("gammaR",SARDp$gammaR)
+    julia_assign("gammaD",SARDp$gammaD)
+    julia_assign("hA",SARDp$hA)
+    julia_assign("hR",SARDp$hR)
+    julia_command("SARDp = (gammaS = gammaS,gammaA = gammaA,gammaR = gammaR,gammaD = gammaD,hA = hA,hR = hR)")
+    
+    outJulia = julia_eval('computePDE(tau,SARDp)')
+    X = outJulia[[1]]
+    Y = outJulia[[2]]
+    PDE0 = outJulia[[3]]
+    PDET = outJulia[[4]]
+    
+    return(listN(X,Y,PDE0,PDET))
+}
 

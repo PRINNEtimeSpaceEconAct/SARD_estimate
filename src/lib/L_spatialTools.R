@@ -2,7 +2,7 @@ require(spdep)
 require(Matrix)
 require(snow)
 
-compute_D <- function(df,dMax=100, longlat=TRUE){
+compute_D <- function(df,dMax=100, longlat=TRUE, torus=FALSE){
     # dMax = 100Km by default. Assumes that we will never consider interaction
     # at distance higher than 100Km.
     # longlat = TRUE by default. Assume we want to consider great circle
@@ -12,36 +12,32 @@ compute_D <- function(df,dMax=100, longlat=TRUE){
     
     if (DEBUG == TRUE){ print("computing all distances") }
     
-    # coord = cbind(df$Longitude,df$Latitude)
-    # spatialNeighbors <- dnearneigh(coord, 0,dMax, row.names=NULL, longlat=TRUE)
-    # dlist <- nbdists(spatialNeighbors, coord, longlat=TRUE)
-    # dlist1 <- lapply(dlist, function(x) x)          
-    # spatialNeighbors <- suppressWarnings(nb2listw(spatialNeighbors,
-    #                               glist=dlist1, style="B", zero.policy=TRUE))
-    # D <- listw2mat(spatialNeighbors)
-    # D <- as(D, "sparseMatrix")
-    
-    coord = cbind(df$Longitude,df$Latitude)
-    spatialNeighbors <- dnearneigh(coord, 0,dMax, row.names=NULL, longlat=longlat)
-    dlist <- nbdists(spatialNeighbors, coord, longlat=longlat)
-    dlist1 <- lapply(dlist, function(x) x)          
-    spatialNeighbors <- suppressWarnings(nb2listw(spatialNeighbors,
-                                                  glist=dlist1, style="B", zero.policy=TRUE))
-    D <- listw2mat(spatialNeighbors)
-    D <- as(D, "sparseMatrix")
-
+    if (torus == FALSE){
+        coord = cbind(df$Longitude,df$Latitude)
+        spatialNeighbors <- dnearneigh(coord, 0,dMax, row.names=NULL, longlat=longlat)
+        dlist <- nbdists(spatialNeighbors, coord, longlat=longlat)
+        dlist1 <- lapply(dlist, function(x) x)          
+        spatialNeighbors <- suppressWarnings(nb2listw(spatialNeighbors,
+                                                      glist=dlist1, style="B", zero.policy=TRUE))
+        D <- listw2mat(spatialNeighbors)
+        D <- as(D, "sparseMatrix")
+    }
+    else {
+        Dx = as.matrix(stats::dist(df$Longitude, diag = TRUE, upper = TRUE))
+        Dy = as.matrix(stats::dist(df$Latitude, diag = TRUE, upper = TRUE))
+        D = sqrt( pmin( Dx,1-Dx )^2 + pmin( Dy,1-Dy )^2 )
+    }
     return(D)
 }
 
-GFDM <- function(df){
+GFDM <- function(df,torus=FALSE){
     # starting from coordinates returns a list with all sparse matrices
     # Mx,My,Mxx,Myy,Mxy
     
     if (DEBUG == TRUE){ print("computing derivative matrices") }
     
-    source("lib/L_GFDM.R")
     coord = cbind(df$Longitude,df$Latitude)
-    MsDeriv = compute_MDiff(coord)
+    MsDeriv = compute_MDiff(coord,torus=torus)
     return(MsDeriv)
 }
 
@@ -49,14 +45,15 @@ compute_WhAR <- function(D,df,h){
     # weight matrices WhA or WhR
     
     if (DEBUG == TRUE){ print("computing WhAR") }
-    
-    dInvSq <- function(d,h) 1/(d+1)^2*((d <= h) & (d > 0))
-    
+
+    dInvSq <- function(d,h){ 1/(2*pi*(log(2)-1/2)) * 1/h^2 * 1/(d/h+1)^2 * ((d <= h) & (d > 0)) }
+
     Wh = dInvSq(D,h)
     Wh[is.na(Wh)] = 0
-    diag(Wh) = 1
-    Wh = t(apply(Wh, 1, function(x) x * as.numeric(df$km2)))
+    diag(Wh) = 1/(2*pi*(log(2)-1/2)) * 1/h^2
     
+    Wh = t(apply(Wh, 1, function(x) x * as.numeric(df$km2)))
+    Wh = Wh / sum((Wh%*%df$y0)*df$km2)
     return(Wh)
 }
 

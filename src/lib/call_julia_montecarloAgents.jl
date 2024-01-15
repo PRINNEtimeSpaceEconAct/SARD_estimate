@@ -9,7 +9,7 @@ import CellListMap.wrap_relative_to
 import CellListMap.limits, CellListMap.Box
 using Random
 
-Random.seed!(1)
+# Random.seed!(1)
 
 function computeAgents(Nm,Na,tau,SARDp)
 
@@ -37,7 +37,7 @@ function init_system(;Na::Int=200,cutoff::Float64=0.1)
     system = PeriodicSystem(
         positions=positions,
         cutoff=cutoff,
-        unitcell = [1.0, 1.0],
+        unitcell = [3.0, 3.0],
         output=similar(positions),
         output_name=:interaction,
         parallel=true,
@@ -96,14 +96,19 @@ end
 function update_interaction!(x,y,i,j,d2,interaction,Na,SARDp)
     
     dxy = x-y
-    # drift = 1/Na * (SARDp.gammaA * ∇h(dxy,d2,SARDp.hA) + SARDp.gammaR * ∇h(dxy,d2,SARDp.hR))
+    d = sqrt(d2)
+    denhA = d * (SARDp.hA + d)^3
+    denhR = d * (SARDp.hR + d)^3
+
     
-    den = (sqrt(d2) * (-1 + sqrt(d2))^3)
-    if den == 0 
+    if d2 == 0 
         drift = zeros(SVector{2})
     else
-        drift = -2 * dxy * (SARDp.gammaA * (d2 ≤ SARDp.hA^2) + 
-                + SARDp.gammaR * (d2 ≤ SARDp.hR^2)) / (Na * den)
+        drift = - (-2 * dxy) * SARDp.gammaA * (d2 ≤ SARDp.hA^2) / denhA + 
+                - (-2 * dxy) * SARDp.gammaR * (d2 ≤ SARDp.hR^2) / denhR
+                
+        drift = drift / Na
+
     end
     interaction[i] += drift
     interaction[j] -= drift
@@ -111,10 +116,8 @@ function update_interaction!(x,y,i,j,d2,interaction,Na,SARDp)
     return interaction
 end
 
-# function Sfun(x,y)
-#     # return the level of s for every coordinate x,y ∈ [0,1] × [0,1]
-#     return (x-0.5)^2+(y-0.5)^2
-# end
+
+
 
 function Sfun(x,y)
     # return the level of s for every coordinate x,y ∈ [0,1] × [0,1]
@@ -124,13 +127,13 @@ function Sfun(x,y)
     if (b <= x <= 1-b) && (b <= y <= 1-b)
         return 0.0
     # sides
-    elseif (x < b) && (b < y < 1-b)
+    elseif (x < b) && (b <= y <= 1-b)
         return (x-b)^2
-    elseif (x > 1-b) && (b < y < 1-b)
+    elseif (x > 1-b) && (b <= y <= 1-b)
         return (x-(1-b))^2
-    elseif (y < b) && (b < x < 1-b)
+    elseif (y < b) && (b <= x <= 1-b)
         return (y-b)^2
-    elseif (y > 1-b) && (b < x < 1-b)
+    elseif (y > 1-b) && (b <= x <= 1-b)
         return (y-(1-b))^2
     # corners
     elseif (x < b) && (y < b)
@@ -146,6 +149,10 @@ function Sfun(x,y)
     end
 end
 
+# function Sfun(x,y)
+    # return the level of s for every coordinate x,y ∈ [0,1] × [0,1]
+#     return (x-0.5)^2+(y-0.5)^2
+# end
 
 function Sfun(p)
     return (Sfun(p[1],p[2]))
@@ -164,11 +171,12 @@ function computeS(Npt,Sfun)
     # with x coordinates, y coordinates and s level
 
     Npt = Int(Npt)
-    x = LinRange(0,1,Npt)
-    y = LinRange(0,1,Npt)
-    X = repeat(y',Npt,1)
-    Y = repeat(x,1,Npt)
-
+    Δx = 1/Npt
+    x = LinRange(0,1-Δx,Npt)
+    y = LinRange(0,1-Δx,Npt)
+    X = repeat(x',Npt,1)
+    Y = repeat(y,1,Npt)
+    
     S = reshape([Float64(Sfun(xi,yi)) for xi in x for yi in y],Npt,Npt)
     return X,Y,S
 end

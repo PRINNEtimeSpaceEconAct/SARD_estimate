@@ -21,6 +21,7 @@ source("lib/L_callJulia.R")
 source("lib/L_IV.R")
 source("lib/L_ML.R")
 source("lib/L_spatialModels.R")
+source("lib/L_GFDM.R")
 source("lib/L_MonteCarloGeneration.R")
 source("lib/L_MonteCarloEstimation.R")
 

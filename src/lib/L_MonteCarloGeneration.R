@@ -42,8 +42,8 @@ createShapeVoronoi <- function(N=100, typeOfDist="uniform", meanNorm=0.5,
         return(voronoiSf)
 }
 
-# Create mountains ----
-createMountains <- function(X, Y, S, shp_sf){
+# Continuous to shp ----
+continuous2shp <- function(X, Y, S, shp_sf){
     # aggregatre levels of S into polygons provided by the shapefile shp_sf
     
     Xstack = c(X)
@@ -82,7 +82,7 @@ gaussianMixBoundary <- function(N,NGaussiansPside=10){
 }
 
 # Create dataframe with all variables ----
-createDataframe <- function(agents0, agentsT, shp_sf, tau, X, Y, S){
+createDataframeAgents <- function(agents0, agentsT, shp_sf, tau, Xs, Ys, S){
     
     # data: geo | y0 | yT | delta | ones | s | km2 | Latitude | Longitude
     # shp_data is the shape of only observation considered, that are dose 
@@ -113,8 +113,7 @@ createDataframe <- function(agents0, agentsT, shp_sf, tau, X, Y, S){
     ones = rep(1, length(y0))
     
     #mountains! 
-    s=createMountains(X, Y, S, shp_sf)
-    
+    s=continuous2shp(Xs, Ys, S, shp_sf)
     
     #Longitute and Latitude
     shpCentroids <- suppressWarnings(st_centroid(shp_sf,
@@ -144,6 +143,56 @@ createDataframe <- function(agents0, agentsT, shp_sf, tau, X, Y, S){
     
 }
 
+createDataframePDE <- function(PDE0, PDET, Xpde, Ypde, shp_sf, tau, Xs, Ys, S){
+    
+    # data: geo | y0 | yT | delta | ones | s | km2 | Latitude | Longitude
+    # shp_data is the shape of only observation considered, that are dose 
+    # that have at least one neighbor within distance minDist 
+    
+    #km2 of each cell
+    km2 <- st_area(shp_sf)/sum(st_area(shp_sf))
+    
+    y0 = continuous2shp(Xpde, Ypde, PDE0, shp_sf)
+    yT = continuous2shp(Xpde, Ypde, PDET, shp_sf)
 
+    #codes for cell
+    geo = seq(1:length(y0))
+    
+    #delta y over the period of length tau
+    delta = delta=(yT-y0)/tau
+    
+    #constant vector
+    ones = rep(1, length(y0))
+    
+    #mountains! 
+    s=continuous2shp(Xs, Ys, S, shp_sf)
+    
+    #Longitute and Latitude
+    shpCentroids <- suppressWarnings(st_centroid(shp_sf,
+                                                 of_largest_polygon = TRUE))
+    
+    shpCentroids <- st_transform(shpCentroids, "+proj=longlat  +datum=WGS84 +no_defs")
+    shpCentroids <- cbind(shpCentroids, Longitude = sf::st_coordinates(shpCentroids)[,1],
+                          Latitude = sf::st_coordinates(shpCentroids)[,2])
+    
+    Longitude <- shpCentroids$Longitude
+    Latitude <- shpCentroids$Latitude
+    
+    data = data.frame(geo = as.character(geo), 
+                      y0 = as.numeric(y0), 
+                      yT = as.numeric(yT),
+                      delta = as.numeric(delta), 
+                      ones = as.numeric(ones),
+                      s = as.numeric(s), 
+                      km2 = as.numeric(km2), 
+                      Latitude = as.numeric(Latitude), 
+                      Longitude = as.numeric(Longitude))
+    
+    shp_sf$Id = as.character(1:nrow(shp_sf))
+    shp_sf = shp_sf %>% left_join(data, by=c("Id"="geo"))
+    
+    return(listN(data, shp_sf))
+    
+}
 
 

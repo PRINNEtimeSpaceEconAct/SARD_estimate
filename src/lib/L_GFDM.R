@@ -3,24 +3,44 @@
 
 require(Matrix)
 
-compute_MDiff <- function(coord){
+compute_MDiff <- function(coord,torus=FALSE){
     # select the ns k-neigh nodes to approximate derivatives
     ns = min(20,nrow(coord)-1)
     Npt = dim(coord)[1]
 
     x = coord[,1]
     y = coord[,2]
-    Dx = matrix(rep(x, Npt), nrow=Npt)  - matrix(rep(x, Npt), nrow=Npt,byrow=TRUE)
-    Dy = matrix(rep(y, Npt), nrow=Npt)  - matrix(rep(y, Npt), nrow=Npt,byrow=TRUE)
-    Dist = sqrt(Dx^2+Dy^2)
-
+    if (torus == FALSE){
+        Dx = matrix(rep(x, Npt), nrow=Npt)  - matrix(rep(x, Npt), nrow=Npt,byrow=TRUE)
+        Dy = matrix(rep(y, Npt), nrow=Npt)  - matrix(rep(y, Npt), nrow=Npt,byrow=TRUE)
+        Dist = sqrt(Dx^2+Dy^2)}
+    else {
+        xRep = matrix(rep(x,Npt),nrow=Npt)
+        DxFlat = xRep-t(xRep)
+        AbsDxFlat = as.matrix(stats::dist(x, diag = TRUE, upper = TRUE))
+        AbsDxTorus = pmin(AbsDxFlat,1-AbsDxFlat)
+        TorusFlatDists = (AbsDxTorus == AbsDxFlat)
+        TorusFlatDists = 1*TorusFlatDists + -1*(!TorusFlatDists)
+        Dx = AbsDxTorus*sign(DxFlat)*TorusFlatDists
+        
+        yRep = matrix(rep(y,Npt),nrow=Npt)
+        DyFlat = yRep-t(yRep)
+        AbsDyFlat = as.matrix(stats::dist(y, diag = TRUE, upper = TRUE))
+        AbsDyTorus = pmin(AbsDyFlat,1-AbsDyFlat)
+        TorusFlatDists = (AbsDyTorus == AbsDyFlat)
+        TorusFlatDists = 1*TorusFlatDists + -1*(!TorusFlatDists)
+        Dy = AbsDyTorus*sign(DyFlat)*TorusFlatDists
+        
+        Dist = sqrt(AbsDxTorus^2 + AbsDyTorus^2)
+    }
+    
     Mx = matrix(0,nrow=Npt,ncol=Npt)
     My = matrix(0,nrow=Npt,ncol=Npt)
     Mxx = matrix(0,nrow=Npt,ncol=Npt)
     Myy = matrix(0,nrow=Npt,ncol=Npt)
     Mxy = matrix(0,nrow=Npt,ncol=Npt)
     
-    print("computing differential matrices Mx, My, Mxx, Myy")
+    if (DEBUG == TRUE){ print("computing differential matrices Mx, My, Mxx, Myy") }
     pb = txtProgressBar(min = 1, max = Npt, initial = 1, style = 3) 
     for (i in 1:Npt){
         idx_neighbors = closestStar(ns,i,Dist)
