@@ -35,6 +35,8 @@ compute_xD <- function(df,MsDeriv){
     
     Mxx = MsDeriv$Mxx
     Myy = MsDeriv$Myy
+    # Mxx = MsDeriv$Mx %*% MsDeriv$Mx
+    # Myy = MsDeriv$My %*% MsDeriv$My
     xD = (Mxx + Myy) %*% matrix(df$y0)
     xD = as.numeric(xD)
     

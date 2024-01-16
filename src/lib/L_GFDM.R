@@ -41,7 +41,6 @@ compute_MDiff <- function(coord,torus=FALSE){
     Mxy = matrix(0,nrow=Npt,ncol=Npt)
     
     if (DEBUG == TRUE){ print("computing differential matrices Mx, My, Mxx, Myy") }
-    pb = txtProgressBar(min = 1, max = Npt, initial = 1, style = 3) 
     for (i in 1:Npt){
         idx_neighbors = closestStar(ns,i,Dist)
         
@@ -56,10 +55,8 @@ compute_MDiff <- function(coord,torus=FALSE){
         Myy[i,c(i,idx_neighbors)] = Di[4,]
         Mxy[i,c(i,idx_neighbors)] = Di[5,]
         
-        setTxtProgressBar(pb,i)
     }
-    close(pb)
-    
+
     Mxx <- as(Mxx, "sparseMatrix")
     Mx <- as(Mx, "sparseMatrix")
     Myy <- as(Myy, "sparseMatrix")

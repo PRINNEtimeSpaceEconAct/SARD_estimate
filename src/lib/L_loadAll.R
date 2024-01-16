@@ -11,6 +11,7 @@ suppressPackageStartupMessages(library(Matrix))
 suppressPackageStartupMessages(library(snow))
 suppressPackageStartupMessages(library(plm))
 suppressPackageStartupMessages(library(AER))
+suppressPackageStartupMessages(library(buildmer))
 suppressPackageStartupMessages(library(JuliaCall))
 
 # sources ----

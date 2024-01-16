@@ -5,7 +5,7 @@
 #     # OUTPUT
 #     
 #     #Create shape file
-#     shpMC = createShapeVoronoi(Np, typeOfDist = typeOfDist, plot=FALSE)
+#     shpMC = createShape(Np, typeOfDist = typeOfDist, plot=FALSE)
 #     
 #     #Create agents
 #     AgentsAll = call_julia_computeAgents(Nm,Na,tau,SARDp)
@@ -48,7 +48,7 @@
 #     # OUTPUT
 #     
 #     #Create shape file
-#     shpMC = createShapeVoronoi(Np, typeOfDist = typeOfDist, plot=FALSE)
+#     shpMC = createShape(Np, typeOfDist = typeOfDist, plot=FALSE)
 #     
 #     #Create agents
 #     AgentsAll = call_julia_computeAgents(Nm,Na,tau,SARDp)
@@ -78,14 +78,47 @@
 #     
 # }
 
+createModelVariables <- function(SARDp){
+    regressors = as.formula(delta ~ 0)
+    instruments = as.formula(~ 0)
+    variables = c()
+    if (SARDp$gammaS != 0){
+        regressors=add.terms(regressors,c("xS","MSDelta"))
+        instruments=add.terms(instruments,c("xS","MS2X"))
+        variables[length(variables)+1] = "xS"
+    }
+    if (SARDp$gammaA != 0){
+        regressors=add.terms(regressors,c("xA","MADelta"))
+        instruments=add.terms(instruments,c("xA","MA2X"))
+        variables[length(variables)+1] = "xA"
+    }
+    if (SARDp$gammaR != 0){
+        regressors=add.terms(regressors,c("xR","MRDelta"))
+        instruments=add.terms(instruments,c("xR","MR2X"))
+        variables[length(variables)+1] = "xR"
+    }
+    if (SARDp$gammaD != 0){
+        regressors=add.terms(regressors,c("xD","MDDelta"))
+        instruments=add.terms(instruments,c("xD","MD2X"))
+        variables[length(variables)+1] = "xD"
+    }
+    
+    model = listN(regressors,instruments)    
+    return(listN(model,variables))
+}
+
 MonteCarloOneRun_LM_Agents_fixedhAhR <- function(Np, Na, tau, typeOfDist = "uniform", SARDp,hA,hR,
-                                   NeS = 100,model=list(),variables=c(""),torus=TRUE){
+                                   NeS = 100,torus=TRUE){
     # add documentation of the function
     # INPUT
     # OUTPUT
+    allVar = createModelVariables(SARDp)
+    model = allVar$model
+    variables = allVar$variables
+    
     
     #Create shape file
-    shpMC = createShapeVoronoi(Np, typeOfDist = typeOfDist, plot=FALSE)
+    shpMC = createShape(Np, typeOfDist = typeOfDist, plot=FALSE)
     
     #Create agents
     AgentsAll = call_julia_computeAgents(1,Na,tau,SARDp)
@@ -106,20 +139,24 @@ MonteCarloOneRun_LM_Agents_fixedhAhR <- function(Np, Na, tau, typeOfDist = "unif
         shp = data_shp$shp_sf
 
         outLMEstimate = estimate_LM_SARD_autoMC(data,hA,hR,shp,longlat = FALSE,model=model,variables=variables,torus=torus)
-        plot(outLMEstimate$shp_regressors)
+        plot(select(outLMEstimate$shp_regressors,-c("km2")))
         
     return(listN(outLMEstimate,data,shp))
     
 }
 
 MonteCarloOneRun_LM_PDE_fixedhAhR <- function(Np, tau, typeOfDist = "uniform", SARDp,hA,hR,
-                                                 NeS = 100,model=list(),variables=c(""),torus=TRUE){
+                                                 NeS = 100,torus=TRUE){
     # add documentation of the function
     # INPUT
     # OUTPUT
     
+    allVar = createModelVariables(SARDp)
+    model = allVar$model
+    variables = allVar$variables
+    
     #Create shape file
-    shpMC = createShapeVoronoi(Np, typeOfDist = typeOfDist, plot=FALSE)
+    shpMC = createShape(Np, typeOfDist = typeOfDist, plot=FALSE)
     
     #Compute PDE
     PDEAll = call_julia_computePDE(tau,SARDp)
@@ -139,21 +176,21 @@ MonteCarloOneRun_LM_PDE_fixedhAhR <- function(Np, tau, typeOfDist = "uniform", S
     shp = data_shp$shp_sf
     
     outLMEstimate = estimate_LM_SARD_autoMC(data,hA,hR,shp,longlat = FALSE,model=model,variables=variables,torus=torus)
-    plot(outLMEstimate$shp_regressors)
-    
+    plot(select(outLMEstimate$shp_regressors,-c("km2")))
+
     return(listN(outLMEstimate,data,shp))
     
 }
 
 
-estimate_LM_SARD_autoMC <- function(df,hA,hR,shp,longlat=TRUE,model=list(),variables,torus=TRUE){
+estimate_LM_SARD_autoMC <- function(df,hA,hR,shp,longlat=FALSE,model=list(),variables,torus=TRUE){
     # Estimate SARD WN via IV with distances hA, hR
     # model = list(regressors=as.formula(delta ~ y0 + xS + xA + xR + xD + MSDelta + MADelta + MRDelta + MDDelta),
                  # instruments=as.formula(~ y0 + xS + xA + xR + xD + MS2X + MA2X + MR2X + MD2X))
     # variables = c("ones","y0","xS","xA","xR","xD")
     
-    print("Estimating LM for given hA hR") 
-    
+    if (DEBUG == TRUE){ print("Estimating LM for given hA hR") }
+  
     MsDeriv = GFDM(df,torus=torus)
     D = compute_D(df,longlat=longlat,torus=torus)
     
@@ -191,7 +228,14 @@ estimate_LM_SARD_autoMC <- function(df,hA,hR,shp,longlat=TRUE,model=list(),varia
     shp_regressors = shp %>% left_join(df, by=c("Id"="geo"),keep=FALSE)
     
     if (DEBUG == TRUE){ print("estimating with LM") }
-    # IV_est = ivreg(model$regressors, model$instruments, data=df)
+    # LM_est = ivreg(model$regressors, model$instruments, data=df)
+    
+    # dfEstimate = df
+    # alpha = 0.05
+    # quantileLow = apply(dfEstimate[variables],MARGIN=2,function(x) quantile(x,alpha/2))
+    # quantileHigh = apply(dfEstimate[variables],MARGIN=2,function(x) quantile(x,1-alpha/2))
+    # ObsInRange = rowSums((dfEstimate[variables] > quantileLow) & (dfEstimate[variables] < quantileHigh)) == length(variables)
+    # dfEstimate=dfEstimate[ObsInRange,]
     
     LM_est = lm(model$regressors, data = df)
     
@@ -200,9 +244,9 @@ estimate_LM_SARD_autoMC <- function(df,hA,hR,shp,longlat=TRUE,model=list(),varia
     AICc = LAR_LM$AICc
     R2N = LAR_LM$R2Nagelkerke
     
-    shp_regressors = shp_regressors %>% select(c("y0"="y0.x","yT"="yT.x","delta"="delta.x","xS","xA","xR","xD")) %>% mutate("WhAy0"=WhA%*%df$y0,"WhRy0"=WhR%*%df$y0)
+    shp_regressors = shp_regressors %>% select(c("y0"="y0.x","yT"="yT.x","delta"="delta.x","km2"="km2.x","xS","xA","xR","xD")) %>% mutate("WhAy0"=WhA%*%df$y0,"WhRy0"=WhR%*%df$y0)
     
-    return(listN(LM_est, LogLik, AICc,R2N,shp_regressors))
+    return(listN(LM_est, LogLik, AICc,R2N,shp_regressors,MsDeriv))
     
 }
 

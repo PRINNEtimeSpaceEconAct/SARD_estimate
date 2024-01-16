@@ -4,7 +4,7 @@
 # using LinearAlgebra
 # using Distributions
 
-function computePDE(tau,SARDp; Δx = 1e-3)    
+function computePDE(tau,SARDp; Δx = 1e-2)    
     Nx = Int(1/Δx)
     T_span = (0.0,tau)
     x = LinRange(0,1-Δx,Nx)

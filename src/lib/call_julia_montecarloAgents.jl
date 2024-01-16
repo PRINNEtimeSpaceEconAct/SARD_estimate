@@ -33,11 +33,11 @@ end
 
 function init_system(;Na::Int=200,cutoff::Float64=0.1)
     positions = generatePositions(Na)    
-    unitcell = [1.0, 1.0]
+    unitcell = SVector(1.0,1.0)
     system = PeriodicSystem(
         positions=positions,
         cutoff=cutoff,
-        unitcell = [3.0, 3.0],
+        unitcell = unitcell,
         output=similar(positions),
         output_name=:interaction,
         parallel=true,
@@ -46,7 +46,7 @@ function init_system(;Na::Int=200,cutoff::Float64=0.1)
 end
 
 function generatePositions(Na)
-    σ = 0.2
+    σ = 0.05
     X = MvNormal([0.5,0.5],σ*I(2))
 
     positions = [SVector{2,Float64}(rand(X)) for _ in 1:Na]
@@ -79,6 +79,10 @@ function sampleAgents(system,Na,tau,SARDp; dt=1e-2)
         x = fixPositions(x)
         system.positions .= x
 
+        # if particles escape, break
+        # if particlesOut(system.positions)
+        #     error("particles out of box") 
+        # end
 
     end
     return vecvec2mat(system.positions)
@@ -88,7 +92,7 @@ end
 function fixPositions(positions)
     for i in eachindex(positions)
         pos = positions[i]
-        positions[i] = SVector{2,Float64}([max(min(pos[1],0.999),0.001),max(min(pos[2],0.999),0.001)])
+        positions[i] = SVector{2,Float64}([mod(pos[1],1.0),mod(pos[2],1.0)])
     end
     return positions
 end

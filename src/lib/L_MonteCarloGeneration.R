@@ -1,45 +1,56 @@
 
-createShapeVoronoi <- function(N=100, typeOfDist="uniform", meanNorm=0.5, 
+createShape <- function(N=100, typeOfDist="VoronoiUniform", meanNorm=0.5, 
                                sdNorm=0.25, plot=FALSE){
     # Create the shape file from Voronoi sets of random generated points
     # N is the number of polygons
+    # typeOfDist = "VoronoiUniform", "Uniform", "other" 
+    # anything of type "other" will make voronoi sets with irregular grid 
     
     # create square polygon
     square = st_polygon(list(cbind(c(0,1,1,0,0), c(0,0,1,1,0))))
     squareBox = st_bbox(c(xmin = 0, xmax = 1, ymax = 1, ymin = 0))
     squareSfc = st_sfc(square,crs = "WGS84")
     
-    # check the number of feature after intersection
-    voronoiSf <- matrix(0, nrow = 1, ncol = 1)
-    while(nrow(voronoiSf)<N){
-        # print(nrow(voronoiSf))
-        # create points to voronoi
-        if (typeOfDist=="uniform"){
-            voronoiPoints = st_multipoint(matrix(runif(n = 2*N),nrow = N, ncol = 2))
-        }else{
-            voronoiPoints = st_multipoint(gaussianMixBoundary(N,10))
-            # voronoiPoints = st_multipoint(matrix(rnorm(n = 2*N, mean=meanNorm, 
-                                                       # sd=sdNorm),nrow = N, ncol=2))
+    
+    if (typeOfDist != "Uniform"){
+        # check the number of feature after intersection
+        voronoiSf <- matrix(0, nrow = 1, ncol = 1)
+        while(nrow(voronoiSf)<N){
+            # print(nrow(voronoiSf))
+            # create points to voronoi
+            if (typeOfDist=="VoronoiUniform"){
+                voronoiPoints = st_multipoint(matrix(runif(n = 2*N),nrow = N, ncol = 2))
+            }else{
+                voronoiPoints = st_multipoint(gaussianMixBoundary(N,10))
+                # voronoiPoints = st_multipoint(matrix(rnorm(n = 2*N, mean=meanNorm, 
+                                                           # sd=sdNorm),nrow = N, ncol=2))
+            }
+            
+            # compute voronoy polygon
+            voronoiPoly = st_voronoi(st_union(voronoiPoints), squareSfc)
+            
+            # create sf object
+            voronoiGeom = st_geometrycollection(voronoiPoly)
+            voronoiGeomColl = st_collection_extract(voronoiGeom)
+            voronoiSf = st_sf(geom=voronoiGeomColl,crs = "WGS84")
+            attr(st_geometry(voronoiSf), "bbox") = squareBox
+            sf_out = st_sf(st_intersection(voronoiSf,squareSfc))
         }
-        
-        # compute voronoy polygon
-        voronoiPoly = st_voronoi(st_union(voronoiPoints), squareSfc)
-        
-        # create sf object
-        voronoiGeom = st_geometrycollection(voronoiPoly)
-        voronoiGeomColl = st_collection_extract(voronoiGeom)
-        voronoiSf = st_sf(geom=voronoiGeomColl,crs = "WGS84")
-        attr(st_geometry(voronoiSf), "bbox") = squareBox
-        voronoiSf = st_intersection(voronoiSf,squareSfc)
-    }       
+    }
+    else {
+        grid_st = st_make_grid(squareSfc,cellsize = 1/sqrt(N))
+        grid_sf = st_sf(geom=grid_st,crs = "WGS84")
+        attr(st_geometry(grid_sf), "bbox") = squareBox
+        sf_out = grid_sf
+    }
      
        # plot
         if (plot==TRUE){
-            plot(voronoiSf)
-            plot(st_centroid(voronoiSf),add = T,pch=19,cex=0.1)
+            plot(sf_out)
+            plot(st_centroid(sf_out),add = T,pch=19,cex=0.1)
         }
         
-        return(voronoiSf)
+        return(sf_out)
 }
 
 # Continuous to shp ----
@@ -54,7 +65,7 @@ continuous2shp <- function(X, Y, S, shp_sf){
     xys = st_as_sf(xy, coords=c("x","y"))
     st_crs(xys) ="WGS84"
     p_ag1 = aggregate(xys, shp_sf, mean)
-    
+    p_ag1$s[is.na(p_ag1$s)] = 0.0
     return(p_ag1$s)
 }
 
