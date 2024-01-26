@@ -16,18 +16,18 @@ createShape <- function(N=100, typeOfDist="VoronoiUniform", meanNorm=0.5,
         # check the number of feature after intersection
         voronoiSf <- matrix(0, nrow = 1, ncol = 1)
         while(nrow(voronoiSf)<N){
-            # print(nrow(voronoiSf))
-            # create points to voronoi
             if (typeOfDist=="VoronoiUniform"){
                 voronoiPoints = st_multipoint(matrix(runif(n = 2*N),nrow = N, ncol = 2))
+                # x = seq(from = -1, to = 1, length.out = sqrt(N))
+                # voronoiPoints = st_multipoint(as.matrix(expand.grid(x,x)))
             }else{
                 voronoiPoints = st_multipoint(gaussianMixBoundary(N,10))
-                # voronoiPoints = st_multipoint(matrix(rnorm(n = 2*N, mean=meanNorm, 
-                                                           # sd=sdNorm),nrow = N, ncol=2))
             }
             
             # compute voronoy polygon
             voronoiPoly = st_voronoi(st_union(voronoiPoints), squareSfc)
+            
+            # voronoiPoly = st_triangulate(voronoiPoints)
             
             # create sf object
             voronoiGeom = st_geometrycollection(voronoiPoly)
@@ -44,13 +44,13 @@ createShape <- function(N=100, typeOfDist="VoronoiUniform", meanNorm=0.5,
         sf_out = grid_sf
     }
      
-       # plot
-        if (plot==TRUE){
-            plot(sf_out)
-            plot(st_centroid(sf_out),add = T,pch=19,cex=0.1)
-        }
-        
-        return(sf_out)
+   # plot
+    if (plot==TRUE){
+        plot(sf_out)
+        plot(st_centroid(sf_out),add = T,pch=19,cex=0.1)
+    }
+    
+    return(sf_out)
 }
 
 # Continuous to shp ----

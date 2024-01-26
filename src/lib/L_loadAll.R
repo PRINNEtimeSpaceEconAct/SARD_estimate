@@ -11,6 +11,8 @@ suppressPackageStartupMessages(library(Matrix))
 suppressPackageStartupMessages(library(snow))
 suppressPackageStartupMessages(library(plm))
 suppressPackageStartupMessages(library(AER))
+suppressPackageStartupMessages(library(pracma))
+suppressPackageStartupMessages(library(spatstat.geom))
 suppressPackageStartupMessages(library(buildmer))
 suppressPackageStartupMessages(library(JuliaCall))
 

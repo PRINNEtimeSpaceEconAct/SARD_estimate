@@ -121,37 +121,39 @@ function update_interaction!(x,y,i,j,d2,interaction,Na,SARDp)
 end
 
 
-
-
 function Sfun(x,y)
-    # return the level of s for every coordinate x,y ∈ [0,1] × [0,1]
-    b = 0.2
-
-    # center
-    if (b <= x <= 1-b) && (b <= y <= 1-b)
-        return 0.0
-    # sides
-    elseif (x < b) && (b <= y <= 1-b)
-        return (x-b)^2
-    elseif (x > 1-b) && (b <= y <= 1-b)
-        return (x-(1-b))^2
-    elseif (y < b) && (b <= x <= 1-b)
-        return (y-b)^2
-    elseif (y > 1-b) && (b <= x <= 1-b)
-        return (y-(1-b))^2
-    # corners
-    elseif (x < b) && (y < b)
-        return (x-b)^2+(y-b)^2 # ok
-    elseif (x < b) && (y > 1 - b)
-        return (x-b)^2+(y-(1-b))^2
-    elseif (x > 1-b) && (y < b)
-        return (x-(1-b))^2+(y-b)^2
-    elseif (x > 1-b) && (y > 1-b)
-        return (x-(1-b))^2+(y-(1-b))^2 # ok
-    else # (x > 1 || x < 0 || y > 1 || y < 0)
-        return b^2
-    end
+    return exp(-((x-0.6)^2)/0.02)
 end
+
+# function Sfun(x,y)
+#     # return the level of s for every coordinate x,y ∈ [0,1] × [0,1]
+#     b = 0.2
+
+#     # center
+#     if (b <= x <= 1-b) && (b <= y <= 1-b)
+#         return 0.0
+#     # sides
+#     elseif (x < b) && (b <= y <= 1-b)
+#         return (x-b)^2
+#     elseif (x > 1-b) && (b <= y <= 1-b)
+#         return (x-(1-b))^2
+#     elseif (y < b) && (b <= x <= 1-b)
+#         return (y-b)^2
+#     elseif (y > 1-b) && (b <= x <= 1-b)
+#         return (y-(1-b))^2
+#     # corners
+#     elseif (x < b) && (y < b)
+#         return (x-b)^2+(y-b)^2 # ok
+#     elseif (x < b) && (y > 1 - b)
+#         return (x-b)^2+(y-(1-b))^2
+#     elseif (x > 1-b) && (y < b)
+#         return (x-(1-b))^2+(y-b)^2
+#     elseif (x > 1-b) && (y > 1-b)
+#         return (x-(1-b))^2+(y-(1-b))^2 # ok
+#     else # (x > 1 || x < 0 || y > 1 || y < 0)
+#         return b^2
+#     end
+# end
 
 # function Sfun(x,y)
     # return the level of s for every coordinate x,y ∈ [0,1] × [0,1]

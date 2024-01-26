@@ -16,7 +16,7 @@ function computePDE(tau,SARDp; Δx = 1e-2)
     ∂yS = ∂y(S)
     WhA = make_WDiscrete(Δx,SARDp.hA)
     WhR = make_WDiscrete(Δx,SARDp.hR)
-    Whu0 = make_WDiscrete(Δx,0.4)
+    Whu0 = make_WDiscrete(Δx,0.1)
 
     p = (SARDp,∂xS,∂yS,WhA,WhR)
 
@@ -27,45 +27,104 @@ function computePDE(tau,SARDp; Δx = 1e-2)
     return X,Y,sol[1],sol[end]
 end
 
-function Sfun(x,y)
-    # return the level of s for every coordinate x,y ∈ [0,1] × [0,1]
-    b = 0.2
+# function Sfun(x,y)
+#     # return the level of s for every coordinate x,y ∈ [0,1] × [0,1]
+#     b = 0.2
 
-    # center
-    if (b <= x <= 1-b) && (b <= y <= 1-b)
-        return 0.0
-    # sides
-    elseif (x < b) && (b <= y <= 1-b)
-        return (x-b)^2
-    elseif (x > 1-b) && (b <= y <= 1-b)
-        return (x-(1-b))^2
-    elseif (y < b) && (b <= x <= 1-b)
-        return (y-b)^2
-    elseif (y > 1-b) && (b <= x <= 1-b)
-        return (y-(1-b))^2
-    # corners
-    elseif (x < b) && (y < b)
-        return (x-b)^2+(y-b)^2 # ok
-    elseif (x < b) && (y > 1 - b)
-        return (x-b)^2+(y-(1-b))^2
-    elseif (x > 1-b) && (y < b)
-        return (x-(1-b))^2+(y-b)^2
-    elseif (x > 1-b) && (y > 1-b)
-        return (x-(1-b))^2+(y-(1-b))^2 # ok
-    else # (x > 1 || x < 0 || y > 1 || y < 0)
-        return b^2
-    end
+#     # center
+#     if (b <= x <= 1-b) && (b <= y <= 1-b)
+#         return 0.0
+#     # sides
+#     elseif (x < b) && (b <= y <= 1-b)
+#         return (x-b)^2
+#     elseif (x > 1-b) && (b <= y <= 1-b)
+#         return (x-(1-b))^2
+#     elseif (y < b) && (b <= x <= 1-b)
+#         return (y-b)^2
+#     elseif (y > 1-b) && (b <= x <= 1-b)
+#         return (y-(1-b))^2
+#     # corners
+#     elseif (x < b) && (y < b)
+#         return (x-b)^2+(y-b)^2 # ok
+#     elseif (x < b) && (y > 1 - b)
+#         return (x-b)^2+(y-(1-b))^2
+#     elseif (x > 1-b) && (y < b)
+#         return (x-(1-b))^2+(y-b)^2
+#     elseif (x > 1-b) && (y > 1-b)
+#         return (x-(1-b))^2+(y-(1-b))^2 # ok
+#     else # (x > 1 || x < 0 || y > 1 || y < 0)
+#         return b^2
+#     end
+# end
+
+function Sfun(x,y)
+    return exp(-((x-0.6)^2)/0.02)
 end
 
+# function make_u0(Δx,Whu0)
+#     # funziona con A e D 
+#     Nx = Int(1/Δx)
+#     x = 0.0:Δx:(1-Δx)
+#     y = 0.0:Δx:(1-Δx)
+    
+#     center1 = [0.25,0.75]
+#     center2 = [0.75,0.70]
+#     center3 = [0.75,0.30]
+
+    
+#     u0 = (0.5*[pdf(MvNormal(center1,0.05*I(2)),[xi,yi]) for xi in x, yi in y] .+ 
+#          .+ 0.25*[pdf(MvNormal(center2,0.01*I(2)),[xi,yi]) for xi in x, yi in y] .+
+#          .+ 0.25*[pdf(MvNormal(center3,0.01*I(2)),[xi,yi]) for xi in x, yi in y])
+
+#     u0 .= imfilter(u0,Whu0,Pad(:circular,Nx,Nx))*Δx^2
+#     u0 .= u0/sum(u0*Δx^2)
+
+#     return u0
+# end
+
+
+# function make_u0(Δx,Whu0)
+      ## tau = 0.05
+      ## SARDp = (gammaS = 0.0, gammaA = -0.04, gammaR = 0.1, gammaD = 0.09, hA = 0.15, hR = 0.5)
+      ## Δx = 1e-2
+      ## Np = 250
+#     # funziona con A D e R
+#     Nx = Int(1/Δx)
+#     x = 0.0:Δx:(1-Δx)
+#     y = 0.0:Δx:(1-Δx)
+    
+#     center1 = [0.45,0.75]
+#     center2 = [0.65,0.75]
+#     center3 = [0.5,0.3]
+
+    
+#     u0 = (0.6*[pdf(MvNormal(center1,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+ 
+#          .+ 0.45*[pdf(MvNormal(center2,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+
+#          .+ 0.4*[pdf(MvNormal(center3,0.005*I(2)),[xi,yi]) for xi in x, yi in y])
+
+#     u0 .= u0 .+ 0.1
+#     # u0 .= imfilter(u0,Whu0,Pad(:circular,Nx,Nx))*Δx^2
+#     u0 .= u0/sum(u0*Δx^2)
+
+#     return u0
+# end
+
 function make_u0(Δx,Whu0)
-    σ = 0.05
-    XNorm = MvNormal([0.5-Δx/2,0.5-Δx/2],σ*I(2))
     Nx = Int(1/Δx)
     x = 0.0:Δx:(1-Δx)
     y = 0.0:Δx:(1-Δx)
-    u0 = [pdf(XNorm,[xi,yi]) for xi in x, yi in y]
+    
+    center1 = [0.45,0.75]
+    center2 = [0.65,0.75]
+    center3 = [0.5,0.3]
 
-    u0 .= imfilter(u0,Whu0,Pad(:circular,Nx,Nx))*Δx^2
+    
+    u0 = (0.6*[pdf(MvNormal(center1,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+ 
+         .+ 0.45*[pdf(MvNormal(center2,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+
+         .+ 0.4*[pdf(MvNormal(center3,0.005*I(2)),[xi,yi]) for xi in x, yi in y])
+
+    u0 .= u0 .+ 0.1
+    # u0 .= imfilter(u0,Whu0,Pad(:circular,Nx,Nx))*Δx^2
     u0 .= u0/sum(u0*Δx^2)
 
     return u0
@@ -82,7 +141,7 @@ function df!(du,u,p,t)
           + SARDp.gammaA * (∂x(u .* ∂x(WhAu)) +  ∂y(u .* ∂y(WhAu))) +
           + SARDp.gammaR * (∂x(u .* ∂x(WhRu)) +  ∂y(u .* ∂y(WhRu))) +
           + SARDp.gammaD * Δ(u))
-    @show t
+    # @show t
 end
 
 

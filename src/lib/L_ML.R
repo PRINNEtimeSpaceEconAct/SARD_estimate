@@ -149,9 +149,9 @@ compute_spatial_error_mat <- function(residWN,shp,
     # nonsignificant coefficient in the decomposition
     maxLag=min(maxLag, floor(sqrt(length(residWN))))
     
-    sf_use_s2(FALSE)
-    spatialNeighbors <- poly2nb(shp)
-    spatialNeighbors.lag <- nblag(spatialNeighbors, maxLag)
+    suppressWarnings(sf_use_s2(FALSE))
+    suppressWarnings(spatialNeighbors <- poly2nb(shp))
+    suppressWarnings(spatialNeighbors.lag <- nblag(spatialNeighbors, maxLag))
     
     maxLag = length(spatialNeighbors.lag)
     
@@ -189,7 +189,9 @@ compute_spatial_error_mat <- function(residWN,shp,
     
 
     Werr = s.errDecompose$coefficients[1,"Estimate"]*WPartial[[1]]
-    if (maxSignifLag == 1) return(listN(maxSignifLag,Werr,lm.errDecompose,spatialNeighbors.lag))
+    if (is.na(maxSignifLag)) {return(listN(maxSignifLag,Werr,lm.errDecompose,spatialNeighbors.lag)) }
+    
+    if (maxSignifLag == 1){ return(listN(maxSignifLag,Werr,lm.errDecompose,spatialNeighbors.lag)) }
     
     for (i in 2:maxSignifLag){
         Werr = Werr + s.errDecompose$coefficients[i,"Estimate"]*WPartial[[i]]}

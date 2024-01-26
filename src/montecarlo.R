@@ -4,12 +4,13 @@ source("lib/L_loadAll.R")
 DEBUG = TRUE
 PARALLEL = TRUE
 NPROCS = 8
+torus = TRUE
 initJulia()
 set.seed(1)
 
 
 # parameters DGP ----
-Np=100
+Np=225
 Na=10000
 Nm = 100
 tau=0.1

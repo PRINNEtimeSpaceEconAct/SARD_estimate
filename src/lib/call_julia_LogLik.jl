@@ -6,7 +6,7 @@
 # using Distributions
 # using FiniteDiff
 
-function julia_LogLik(X,Y,MS,MA,MR,MD,Weps,initialCondition)
+function julia_LogLik_4Mat(X,Y,MS,MA,MR,MD,Weps,initialCondition)
     """
     Estimate SARD model by using LogLikelyhood
     """
@@ -88,7 +88,7 @@ function negLogLik_4MatSpatErr(p,param)
     return -LogLik_4MatSpatErr(p,param)
 end
 
-function julia_LogLik_WN(X,Y,MS,MA,MR,MD,initialCondition)
+function julia_LogLik_WN_4Mat(X,Y,MS,MA,MR,MD,initialCondition)
     """
     Estimate SARD WN model by using LogLikelyhood
     """
@@ -162,4 +162,157 @@ end
 function negLogLik_4Mat(p,param)
     # negative LogLikelyhood to minimize
     return -LogLik_4Mat(p,param)
+end
+
+function julia_LogLik_1Mat(X,Y,W1,Weps,initialCondition)
+    """
+    Estimate SARD model with one regressor with spatial error by using LogLikelyhood 
+    """
+    
+    W1 = sparse(Matrix{Float64}(W1)); dropzeros!(W1)
+    Weps = sparse(Matrix{Float64}(Weps)); dropzeros!(Weps)
+
+    lb = [-1,-1]
+    ub = [1,1]
+    p_start = initialCondition
+    
+    # starting optimization
+    f_opt = OptimizationFunction(negLogLik_1MatSpatErr,Optimization.AutoFiniteDiff())
+    prob = OptimizationProblem(f_opt,p_start,(Y,X,W1,Weps),
+    lb=lb,ub=ub)
+    opt = Optimization.solve(prob,Optim.NelderMead(),show_trace=true)
+    optResult = opt.u
+
+    XNormal = Normal(0,1)
+
+    # computing se, pvalue of beta
+    N = size(W1,1)
+    A = I(N) - optResult[1]*W1
+                
+    spatY = A * Y
+    beta = (transpose(X)*X) \ ( transpose(X) * spatY )
+    resid = spatY - X*beta
+    sigma2est = sqrt(dot(resid,resid))/N
+    covBeta = sigma2est * inv(transpose(X)*X)
+    seBeta = sqrt.(diag(covBeta))
+    tStatBeta = beta./seBeta
+    pValueBeta = 2*cdf.(XNormal,-abs.(tStatBeta))
+
+    # computing se, pvalue of thetas (lags)
+    LL(p) =  LogLik_1MatSpatErr(p,(Y,X,W1,Weps))
+    Hess = -FiniteDiff.finite_difference_hessian(LL,optResult)
+    covTheta = inv(Hess)
+    seTheta = sqrt.(diag(covTheta))
+    tStatTheta = optResult./seTheta
+    pValueTheta = 2*cdf.(XNormal,-abs.(tStatTheta))
+
+    # collecting output
+    coef = [beta..., optResult...]
+    se_coef = [seBeta...,seTheta...]
+    pvalue_coef = [pValueBeta...,pValueTheta...]
+    residuals = resid
+
+    return(coef, se_coef, pvalue_coef, residuals)
+end
+
+function LogLik_1MatSpatErr(p,param)  
+    # LogLikelyhood of spatial lag model with 4 matrices and no spatial error
+
+    y,x,w1,weps = param
+
+    N = size(w1,1)
+    A = I(N) - p[1]*w1
+    B = I(N) - p[2]*weps
+    spatY = A*y
+    beta = (transpose(x)*x) \ ( transpose(x) * spatY )
+    u = spatY - x * beta
+    mu = B * u
+    sigma2 = dot(mu,mu) / N
+    nu = mu / sqrt(sigma2)
+
+    logAbsDetA = logabsdet(A)
+    logAbsDetB = logabsdet(B)
+
+    LogLik = -(N/2)*(log(2*pi)) - (N/2)*log(sigma2) + logAbsDetB[1] + logAbsDetA[1] - 1/2*dot(nu,nu)
+    
+    return LogLik
+end
+
+function negLogLik_1MatSpatErr(p,param)
+    # negative LogLikelyhood to minimize
+    return -LogLik_1MatSpatErr(p,param)
+end
+
+
+function julia_LogLik_WN_1Mat(X,Y,W1,initialCondition)
+    """
+    Estimate SARD WN model with one regressor by using LogLikelyhood
+    """
+
+    W1 = sparse(Matrix{Float64}(W1)); dropzeros!(W1)
+    
+    
+    lb = [-1]
+    ub = [1]
+    p_start = [initialCondition]
+    
+   
+    # starting optimization
+    f_opt = OptimizationFunction(negLogLik_1Mat,Optimization.AutoFiniteDiff())
+    prob = OptimizationProblem(f_opt,p_start,(Y,X,W1),
+    lb=lb,ub=ub)
+    opt = Optimization.solve(prob,Optim.NelderMead(),show_trace=true)
+    optResult = opt.u
+
+    XNormal = Normal(0,1)
+
+    # computing se, pvalue of beta
+    N = size(W1,1)
+    A = I(N) - optResult[1]*W1
+    spatY = A * Y
+    beta = (transpose(X)*X) \ ( transpose(X) * spatY )
+    resid = spatY - X*beta
+    sigma2est = sqrt(dot(resid,resid))/N
+    covBeta = sigma2est * inv(transpose(X)*X)
+    seBeta = sqrt.(diag(covBeta))
+    tStatBeta = beta./seBeta
+    pValueBeta = 2*cdf.(XNormal,-abs.(tStatBeta))
+
+    # computing se, pvalue of thetas (lags)
+    LL(p) =  LogLik_1Mat(p,(Y,X,W1))
+    Hess = -FiniteDiff.finite_difference_hessian(LL,optResult)
+    covTheta = inv(Hess)
+    seTheta = sqrt.(diag(covTheta))
+    tStatTheta = optResult./seTheta
+    pValueTheta = 2*cdf.(XNormal,-abs.(tStatTheta))
+
+    # collecting output
+    coef = [beta..., optResult...]
+    se_coef = [seBeta...,seTheta...]
+    pvalue_coef = [pValueBeta...,pValueTheta...]
+    residuals = resid
+
+    return(coef, se_coef, pvalue_coef, residuals)
+end
+
+function LogLik_1Mat(p,param)  
+    # LogLikelyhood of spatial lag model with 1 matrices and no spatial error
+
+    y,x,w1 = param
+
+    N = size(w1,1)
+    A = I(N) - p[1]*w1
+    spatY = A*y
+    beta = (transpose(x)*x) \ ( transpose(x) * spatY )
+    u = spatY - x * beta
+    sigma2 = dot(u,u) / N
+
+    logAbsDet = logabsdet(A)
+    LogLik = -(N/2)*(log(2*pi)) - (N/2)*log(sigma2) + logAbsDet[1] - N/2
+    return LogLik
+end
+
+function negLogLik_1Mat(p,param)
+    # negative LogLikelyhood to minimize
+    return -LogLik_1Mat(p,param)
 end

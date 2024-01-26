@@ -1,6 +1,66 @@
 require(spdep)
 require(Matrix)
 require(snow)
+require(pracma)
+
+compute_D_meanDist <- function(shp,Xi,Yi,fi,NSamplePerPoly = 1000){
+    
+    # km2 <- st_area(shp)/sum(st_area(shp))
+    # y0 = continuous2shp(Xi, Yi, fi, shp)
+    
+    Np = nrow(shp)
+    Xistack = c(Xi)
+    Yistack = c(Yi)
+    fistack = c(fi)
+    
+    xSort = sort(unique(Xistack))
+    ySort = sort(unique(Xistack))
+    fI <- function(x,y) {interp2(xSort,ySort,fi,x,y)}
+    
+    xy = data.frame(x=Xistack, y=Yistack, f=fistack)
+    xys = st_as_sf(xy, coords=c("x","y"))
+    st_crs(xys) ="WGS84"
+    intersection = st_intersects(shp,xys)
+
+    samplePoly = list()
+    for (indexPoly in 1:Np){
+        poly = shp$geom[[indexPoly]]
+        maxDensity = max(fistack[intersection[[indexPoly]]])
+        samplePoly[[indexPoly]] = sampleFromDensity(fI,maxDensity,NSamplePerPoly,shp$geom[[indexPoly]])
+    }
+    
+    # plot(poly)
+    # points(Xistack[intersection[[indexPoly]]],Yistack[intersection[[indexPoly]]])
+    # points(sampleFromDensity(fI,maxDensity,NSamplePerPoly,shp$geom[[indexPoly]]),col="red")
+    
+    D = matrix(0,nrow=Np,ncol=Np)
+    for (i in 1:Np){
+        for (j in 1:Np){
+            if (i != j) {
+            sample_i = samplePoly[[i]]
+            sample_j = samplePoly[[j]]
+            D[i,j] = mean((crossdist.default(sample_i[,1],sample_i[,2],sample_j[,1],sample_j[,2],period=c(1,1)))) }
+        }
+    }
+
+    return(D)
+}
+
+
+sampleFromDensity <- function(densityFun,maxDensity,N,poly){
+    samples = suppressWarnings(matrix(data=c(0,0),nrow=0,ncol=2))
+    while (nrow(samples) < N){
+        Nmissing = N - nrow(samples)
+        x = st_coordinates(st_sample(poly,Nmissing))
+        y = runif(Nmissing,min=0,max=maxDensity)
+        acceptedSamples = x[(y <= densityFun(x[,1],x[,2])),]
+        samples = rbind(samples,acceptedSamples)
+        samples = samples[!(is.na(samples[,1]) | is.na(samples[,2])),]
+    }
+    samples = samples[1:N,]
+    return(samples)
+}
+
 
 compute_D <- function(df,dMax=100, longlat=TRUE, torus=FALSE){
     # dMax = 100Km by default. Assumes that we will never consider interaction
@@ -23,11 +83,13 @@ compute_D <- function(df,dMax=100, longlat=TRUE, torus=FALSE){
         D <- as(D, "sparseMatrix")
     }
     else {
-        Dx = as.matrix(stats::dist(df$Longitude, diag = TRUE, upper = TRUE))
-        Dy = as.matrix(stats::dist(df$Latitude, diag = TRUE, upper = TRUE))
-        D = sqrt( pmin( Dx,1-Dx )^2 + pmin( Dy,1-Dy )^2 )
+        # Dx = as.matrix(stats::dist(df$Longitude, diag = TRUE, upper = TRUE))
+        # Dy = as.matrix(stats::dist(df$Latitude, diag = TRUE, upper = TRUE))
+        # D = sqrt( pmin( Dx,1-Dx )^2 + pmin( Dy,1-Dy )^2 )
+        D = crossdist.default(df$Longitude,df$Latitude,df$Longitude,df$Latitude,period=c(1,1))
     }
     return(D)
+    
 }
 
 GFDM <- function(df,torus=FALSE){

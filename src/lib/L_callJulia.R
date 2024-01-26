@@ -86,7 +86,7 @@ call_julia_LogLik_WN <- function(X,Y,MS,MA,MR,MD,initialCondition){
     julia_assign("MD",as.matrix(MD))
     julia_assign("initialCondition",initialCondition)
     
-    outJulia = julia_eval('julia_LogLik_WN(X,Y,MS,MA,MR,MD,initialCondition)')
+    outJulia = julia_eval('julia_LogLik_WN_4Mat(X,Y,MS,MA,MR,MD,initialCondition)')
     coef = outJulia[[1]]
     se_coef = outJulia[[2]]
     pvalue_coef = outJulia[[3]]
@@ -108,7 +108,44 @@ call_julia_LogLik <- function(X,Y,MS,MA,MR,MD,Weps,initialCondition){
     julia_assign("Weps",as.matrix(Weps))
     julia_assign("initialCondition",initialCondition)
     
-    outJulia = julia_eval('julia_LogLik(X,Y,MS,MA,MR,MD,Weps,initialCondition)')
+    outJulia = julia_eval('julia_LogLik_4Mat(X,Y,MS,MA,MR,MD,Weps,initialCondition)')
+    coef = outJulia[[1]]
+    se_coef = outJulia[[2]]
+    pvalue_coef = outJulia[[3]]
+    residuals = outJulia[[4]]
+    
+    return(listN(coef, se_coef, pvalue_coef, residuals))
+}
+
+call_julia_LogLik_WN_1Mat <- function(X,Y,W1,initialCondition){
+
+    # initJulia()
+    julia_command('include("lib/call_julia_LogLik.jl")')
+    julia_assign("X",X)
+    julia_assign("Y",Y)
+    julia_assign("W1",as.matrix(W1))
+    julia_assign("initialCondition",initialCondition)
+    
+    outJulia = julia_eval('julia_LogLik_WN_1Mat(X,Y,W1,initialCondition)')
+    coef = outJulia[[1]]
+    se_coef = outJulia[[2]]
+    pvalue_coef = outJulia[[3]]
+    residuals = outJulia[[4]]
+    
+    return(listN(coef, se_coef, pvalue_coef, residuals))
+}
+
+call_julia_LogLik_1Mat <- function(X,Y,W1,Weps,initialCondition){
+    
+    # initJulia()
+    julia_command('include("lib/call_julia_LogLik.jl")')
+    julia_assign("X",X)
+    julia_assign("Y",Y)
+    julia_assign("W1",as.matrix(W1))
+    julia_assign("Weps",as.matrix(Weps))
+    julia_assign("initialCondition",initialCondition)
+    
+    outJulia = julia_eval('julia_LogLik_1Mat(X,Y,W1,Weps,initialCondition)')
     coef = outJulia[[1]]
     se_coef = outJulia[[2]]
     pvalue_coef = outJulia[[3]]
@@ -159,7 +196,7 @@ call_julia_computeAgents <- function(Nm,Na,tau,SARDp){
 call_julia_computePDE <- function(tau,SARDp){
     
     # initJulia()
-    julia_command('include("lib/call_julia_montecarloPDE.jl")')
+    julia_command('include("lib/call_julia_montecarloPDE.jl");')
     
     julia_assign("tau",tau)
     
