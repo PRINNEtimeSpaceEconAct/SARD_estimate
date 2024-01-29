@@ -5,6 +5,7 @@ using Distributions
 using ProgressMeter
 using KernelDensity
 using Plots
+using Interpolations
 
 # PDE
 using LoopVectorization
@@ -315,35 +316,7 @@ end
 # animate(trajectory)
 
 ############## PDE #############################################################
-tau = 0.05
-SARDp = (gammaS = 0.0, gammaA = -0.04, gammaR = 0.1, gammaD = 0.09, hA = 0.15, hR = 0.5)
-sol,xS,xA,xR,xD  = computePDEInteractive(tau,SARDp)
-yT,xS,xA,xR,xD = computeStep(tau,SARDp)
-plotPDE(sol)
-plotSurf(sol[end]-yT)
 
-# plotSurf(xA)
-
-function make_u0(Δx,Whu0)
-    Nx = Int(1/Δx)
-    x = 0.0:Δx:(1-Δx)
-    y = 0.0:Δx:(1-Δx)
-    
-    center1 = [0.45,0.75]
-    center2 = [0.65,0.75]
-    center3 = [0.5,0.3]
-
-    
-    u0 = (0.6*[pdf(MvNormal(center1,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+ 
-         .+ 0.45*[pdf(MvNormal(center2,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+
-         .+ 0.4*[pdf(MvNormal(center3,0.005*I(2)),[xi,yi]) for xi in x, yi in y])
-
-    u0 .= u0 .+ 0.1
-    # u0 .= imfilter(u0,Whu0,Pad(:circular,Nx,Nx))*Δx^2
-    u0 .= u0/sum(u0*Δx^2)
-
-    return u0
-end
 
 function computeStep(tau,SARDp; Δx = 1e-2)
     Nx = Int(1/Δx)
@@ -473,7 +446,7 @@ end
 # end
 
 
-§function df!(du,u,p,t)
+function df!(du,u,p,t)
     SARDp,∂xS,∂yS,WhA,WhR = p
     Nx = size(u,1)
     Δx = 1/Nx
@@ -588,3 +561,80 @@ function plotSurf(f)
     Nt = 100
     surface(f,zlims=[min(minimum(f),0),maximum(f)],size = [1000,1000])
 end
+
+function make_u0(Δx,Whu0)
+    Nx = Int(1/Δx)
+    x = 0.0:Δx:(1-Δx)
+    y = 0.0:Δx:(1-Δx)
+    
+    center1 = [0.45,0.75]
+    center2 = [0.65,0.75]
+    center3 = [0.5,0.3]
+
+    
+    u0 = (0.6*[pdf(MvNormal(center1,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+ 
+         .+ 0.45*[pdf(MvNormal(center2,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+
+         .+ 0.4*[pdf(MvNormal(center3,0.005*I(2)),[xi,yi]) for xi in x, yi in y])
+
+    u0 .= u0 .+ 0.1
+    # u0 .= imfilter(u0,Whu0,Pad(:circular,Nx,Nx))*Δx^2
+    u0 .= u0/sum(u0*Δx^2)
+
+    return u0
+end
+
+tau = 0.05
+SARDp = (gammaS = 0.0, gammaA = -0.03, gammaR = 0.1, gammaD = 0.09, hA = 0.15, hR = 0.5)
+sol,xS,xA,xR,xD  = computePDEInteractive(tau,SARDp)
+yT,xS,xA,xR,xD = computeStep(tau,SARDp)
+plotPDE(sol)
+plotSurf(sol[end]-yT)
+
+
+
+function densityInitialCondition(;Δx = 1e-2)
+    Nx = Int(1/Δx)
+    x = LinRange(0,1-Δx,Nx)
+    y = LinRange(0,1-Δx,Nx)
+    X = repeat(x',Nx,1)
+    Y = repeat(y,1,Nx)
+    Whu0 = make_WDiscrete(Δx,0.1)
+    
+    
+    u0 = make_u0(Δx,Whu0)
+    maxu0 = maximum(u0)
+    nodes = (x,y)
+    u0Fun = extrapolate(interpolate(nodes,u0,Gridded(Linear(Periodic()))),Periodic())
+    
+    return u0Fun, maxu0
+end
+
+function sampleFromDensity(densityFun,maxDensity,N)
+    samples = zeros(0,2)
+    while size(samples,1) < N
+        Nmissing = N - size(samples,1)
+        x = rand(Nmissing,2)
+        values = densityFun.(x[:,1],x[:,2])
+        y = maxDensity*rand(Nmissing)
+        acceptedSamples = x[findall(y .<= values),:]
+        samples = vcat(acceptedSamples,samples)
+    end
+    samples = samples[1:N,:]
+    samplesSvec = [SVector{2,Float64}(samples[i,:]) for i in 1:N]
+    return samplesSvec
+end
+
+Na = 1000
+function generatePositions(Na)
+    σ = 0.05
+    X = MvNormal([0.5,0.5],σ*I(2))
+
+    positions = [SVector{2,Float64}(rand(X)) for _ in 1:Na]
+    while any(particleOut.(positions))
+        positions[particleOut.(positions)] = 
+            [SVector{2,Float64}(rand(X)) for _ in 1:sum(particleOut.(positions))]
+    end
+
+    return positions
+end
+

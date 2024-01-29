@@ -32,8 +32,10 @@ function computeAgents(Nm,Na,tau,SARDp)
 end
 
 function init_system(;Na::Int=200,cutoff::Float64=0.1)
-    positions = generatePositions(Na)    
     unitcell = SVector(1.0,1.0)
+    # positions = generatePositions(Na) 
+    u0Fun, maxu0 = densityInitialCondition()
+    positions = sampleFromDensity(u0Fun,maxu0,Na)   
     system = PeriodicSystem(
         positions=positions,
         cutoff=cutoff,
@@ -44,6 +46,40 @@ function init_system(;Na::Int=200,cutoff::Float64=0.1)
     )
     return system
 end
+
+function densityInitialCondition(;Δx = 1e-2)
+    Nx = Int(1/Δx)
+    x = LinRange(0,1-Δx,Nx)
+    y = LinRange(0,1-Δx,Nx)
+    X = repeat(x',Nx,1)
+    Y = repeat(y,1,Nx)
+    Whu0 = make_WDiscrete(Δx,0.1)
+    
+    
+    u0 = make_u0(Δx,Whu0)
+    u0 = u0'
+    maxu0 = maximum(u0)
+    nodes = (x,y)
+    u0Fun = extrapolate(interpolate(nodes,u0,Gridded(Linear(Periodic()))),Periodic())
+    
+    return u0Fun, maxu0
+end
+
+function sampleFromDensity(densityFun,maxDensity,N)
+    samples = zeros(0,2)
+    while size(samples,1) < N
+        Nmissing = N - size(samples,1)
+        x = rand(Nmissing,2)
+        values = densityFun.(x[:,1],x[:,2])
+        y = maxDensity*rand(Nmissing)
+        acceptedSamples = x[findall(y .<= values),:]
+        samples = vcat(acceptedSamples,samples)
+    end
+    samples = samples[1:N,:]
+    samplesSvec = [SVector{2,Float64}(samples[i,:]) for i in 1:N]
+    return samplesSvec
+end
+
 
 function generatePositions(Na)
     σ = 0.05
@@ -58,7 +94,7 @@ function generatePositions(Na)
     return positions
 end
 
-function sampleAgents(system,Na,tau,SARDp; dt=1e-2)
+function sampleAgents(system,Na,tau,SARDp; dt=1e-3)
 
     nsteps = round(Int,tau/dt)
     X = MvNormal([0.0,0.0],I(2))

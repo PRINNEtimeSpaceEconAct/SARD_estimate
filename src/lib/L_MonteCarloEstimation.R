@@ -107,7 +107,7 @@ createModelVariables <- function(SARDp){
     return(listN(model,variables))
 }
 
-MonteCarloOneRun_LM_Agents_fixedhAhR <- function(Np, Na, tau, typeOfDist = "uniform", SARDp,hA,hR,
+MonteCarloOneRun_LM_Agents_fixedhAhR <- function(Np, Na, tau, typeOfDist = "uniform", typeOfEst = "LM", SARDp,hA,hR,
                                    NeS = 100,torus=TRUE){
     # add documentation of the function
     # INPUT
@@ -131,17 +131,25 @@ MonteCarloOneRun_LM_Agents_fixedhAhR <- function(Np, Na, tau, typeOfDist = "unif
     Ys = SComputed$Y
     S = SComputed$S
     
-        agents0 = agents0_MC[1,,]
-        agentsT = agentsT_MC[1,,]
-        
-        data_shp = createDataframeAgents(agents0, agentsT, shpMC, tau, Xs, Ys, S)
-        data = data_shp$data
-        shp = data_shp$shp_sf
+    agents0 = agents0_MC[1,,]
+    agentsT = agentsT_MC[1,,]
+    
+    data_shp = createDataframeAgents(agents0, agentsT, shpMC, tau, Xs, Ys, S)
+    data = data_shp$data
+    shp = data_shp$shp_sf
 
-        outLMEstimate = estimate_LM_SARD_autoMC(data,hA,hR,shp,longlat = FALSE,model=model,variables=variables,torus=torus)
-        plot(select(outLMEstimate$shp_regressors,-c("km2")))
-        
-    return(listN(outLMEstimate,data,shp))
+    if (typeOfEst == "LM"){ 
+        outEstimate = estimate_LM_SARD_autoMC(data,hA,hR,shp,longlat = FALSE,model=model,variables=variables,torus=torus) }
+    if (typeOfEst == "WNLL"){
+        outEstimate = estimate_WN1Mat_SARD_auto_MC(data,hA,hR,shp,longlat = FALSE,model=model,variables=variables,torus=torus)
+    }
+    if (typeOfEst == "SELL"){
+        outEstimate = estimate_1Mat_SARD_auto_MC(data,hA,hR,shp,longlat = FALSE,model=model,variables=variables,torus=torus)
+    }
+    
+    plot(select(outEstimate$shp_regressors,-c("km2")))
+    
+    return(listN(outEstimate,data,shp))
     
 }
 

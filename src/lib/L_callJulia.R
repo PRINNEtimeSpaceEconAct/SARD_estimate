@@ -56,6 +56,7 @@ initJulia <- function(){
     julia_install_package_if_needed("ProgressMeter")
     julia_install_package_if_needed("DifferentialEquations")
     julia_install_package_if_needed("ImageFiltering")
+    julia_install_package_if_needed("Interpolations")
     
     julia_library("LinearAlgebra")
     julia_library("Optimization")
@@ -69,6 +70,7 @@ initJulia <- function(){
     julia_library("ProgressMeter")
     julia_library("DifferentialEquations")
     julia_library("ImageFiltering")
+    julia_library("Interpolations")
     
     
     if (DEBUG == TRUE){ julia_command('println("Julia is working as intended")') }

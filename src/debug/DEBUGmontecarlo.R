@@ -8,7 +8,7 @@ initJulia()
 
 # parameters DGP ----
 Np=250
-Na=1000
+Na=100000
 Nm = 100
 tau= 0.05
 NeS = 100
@@ -23,12 +23,12 @@ typeOfEst = "LM"
 # tau= 0.1
 # SARDp = list(gammaS = 0.0, gammaA = -0.05, gammaR = 0.0, gammaD = 0.03, hA = 0.3, hR = 0.4)
 
-# funzionano A D e R
+# funzionano A R e D
 # Np=250
 # tau= 0.05
 # SARDp = list(gammaS = 0.0, gammaA = -0.03, gammaR = 0.1, gammaD = 0.09, hA = 0.15, hR = 0.4)
 
-# parameters estimation ----
+# parameters estimation PDE ----
 SARDp = list(gammaS = 0.0, gammaA = -0.03, gammaR = 0.1, gammaD = 0.09, hA = 0.15, hR = 0.4)
 resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform = MonteCarloOneRun_LM_PDE_fixedhAhR(Np, tau, typeOfDist = "Uniform",typeOfEst=typeOfEst,SARDp,SARDp$hA,SARDp$hR,torus=TRUE)
 LM_est = resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform$outEstimate$LM_est; s = summary(LM_est)
@@ -36,6 +36,17 @@ summary(LM_est)
 print(paste("xA in ",round(abs(SARDp$gammaA-LM_est$coefficients["xA"])/s$coefficients["xA","Std. Error"],digits=2)," std. error",sep=""))
 print(paste("xR in ",round(abs(SARDp$gammaR-LM_est$coefficients["xR"])/s$coefficients["xR","Std. Error"],digits=2)," std. error",sep=""))
 print(paste("xD in ",round(abs(SARDp$gammaD-LM_est$coefficients["xD"])/s$coefficients["xD","Std. Error"],digits=2)," std. error",sep=""))
+
+# parameters estimation Agents ----
+SARDp = list(gammaS = 0.0, gammaA = -0.03, gammaR = 0.1, gammaD = 0.09, hA = 0.15, hR = 0.4)
+resultMonteCarloOneRun_LM_Agents_fixedhAhRUniform = MonteCarloOneRun_LM_Agents_fixedhAhR(Np,Na,tau,typeOfDist = "Uniform",typeOfEst=typeOfEst,SARDp,SARDp$hA,SARDp$hR,torus=TRUE)
+LM_est = resultMonteCarloOneRun_LM_Agents_fixedhAhRUniform$outEstimate$LM_est; s = summary(LM_est)
+summary(LM_est)
+print(paste("xA in ",round(abs(SARDp$gammaA-LM_est$coefficients["xA"])/s$coefficients["xA","Std. Error"],digits=2)," std. error",sep=""))
+print(paste("xR in ",round(abs(SARDp$gammaR-LM_est$coefficients["xR"])/s$coefficients["xR","Std. Error"],digits=2)," std. error",sep=""))
+print(paste("xD in ",round(abs(SARDp$gammaD-LM_est$coefficients["xD"])/s$coefficients["xD","Std. Error"],digits=2)," std. error",sep=""))
+
+
 
 # montecarlo PDE one run with fixed hA hR ----
 # resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform = MonteCarloOneRun_LM_PDE_fixedhAhR(Np, tau, typeOfDist = "Uniform",typeOfEst=typeOfEst,SARDp,SARDp$hA,SARDp$hR,torus=TRUE)
