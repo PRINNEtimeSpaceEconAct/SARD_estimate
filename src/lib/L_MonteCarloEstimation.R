@@ -468,4 +468,61 @@ estimate_1Mat_SARD_auto_MC <- function(df,hA,hR,shp,longlat=FALSE,model=list(),v
     
 }
 
+estimate_LMfromData <- function(df,hA,hR,shp,SARDp,longlat=FALSE,torus=TRUE){
+    
+    allVar = createModelVariables(SARDp)
+    model = allVar$model
+    variables = allVar$variables
+    MsDeriv = GFDM(df,torus=torus)
+    D = compute_D(df,longlat=longlat,torus=torus)
+    
+    WhA = compute_WhAR(D,df,hA)
+    WhR = compute_WhAR(D,df,hR)
+    xS = compute_xS(df,MsDeriv)
+    xA = compute_xAR(df,MsDeriv, WhA)
+    xR = compute_xAR(df,MsDeriv, WhR)
+    xD = compute_xD(df,MsDeriv)
+    MS = compute_MSLag(df,MsDeriv)
+    MA = compute_MARLag(df,MsDeriv,WhA)
+    MR = compute_MARLag(df,MsDeriv,WhR)
+    MD = compute_MDLag(MsDeriv)
+    
+    X = data.frame(ones=df$ones,y0=df$y0,xS=xS,xA=xA,xR=xR,xD=xD)
+    X = X %>% select(all_of(variables))
+    X = as.matrix(X)
+    
+    # lag regressors
+    MSDelta = as.numeric(MS %*% matrix(df$delta))
+    MADelta = as.numeric(MA %*% matrix(df$delta))
+    MRDelta = as.numeric(MR %*% matrix(df$delta))
+    MDDelta = as.numeric(MD %*% matrix(df$delta))
+    
+    # instruments for IV
+    MS2X=as.matrix(MS %*% MS %*% X)
+    MA2X=as.matrix(MA %*% MA %*% X)
+    MR2X=as.matrix(MR %*% MR %*% X) 
+    MD2X=as.matrix(MD %*% MD %*% X)
+    
+    df = df %>% mutate(xS=xS, xA = xA, xR = xR, xD = xD,
+                       MSDelta=MSDelta, MADelta=MADelta, MRDelta=MRDelta,MDDelta=MDDelta
+                       ,MS2X=MS2X[,],MA2X=MA2X[,],MR2X=MR2X[,],MD2X=MD2X[,])
+    
+    shp_regressors = shp %>% left_join(df, by=c("Id"="geo"),keep=FALSE)
+    
+    if (DEBUG == TRUE){ print("estimating with LM") }
+    # LM_est = ivreg(model$regressors, model$instruments, data=df)
+    
+    LM_est = lm(model$regressors, data = df)
+    
+    LAR_LM = NULL
+    LogLik = LAR_LM$LogLiKelyhood
+    AICc = LAR_LM$AICc
+    R2N = LAR_LM$R2Nagelkerke
+    
+    shp_regressors = shp_regressors %>% select(c("y0"="y0.x","yT"="yT.x","delta"="delta.x","km2"="km2.x","xS","xA","xR","xD","MSDelta","MADelta","MRDelta","MDDelta")) %>% mutate("WhAy0"=WhA%*%df$y0,"WhRy0"=WhR%*%df$y0)
+    
+    plot(select(shp_regressors,-c("km2")))
+    return(listN(LM_est, LogLik, AICc,R2N,shp_regressors,MsDeriv))
+}
 
+ 

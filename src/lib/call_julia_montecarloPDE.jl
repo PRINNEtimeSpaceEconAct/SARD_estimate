@@ -4,7 +4,7 @@
 # using LinearAlgebra
 # using Distributions
 
-function computePDE(tau,SARDp; Δx = 1e-2)    
+function computePDE(tau,SARDp; Δx = 1e-3)    
     Nx = Int(1/Δx)
     T_span = (0.0,tau)
     x = LinRange(0,1-Δx,Nx)
@@ -84,11 +84,9 @@ end
 
 
 # function make_u0(Δx,Whu0)
-      ## tau = 0.05
-      ## SARDp = (gammaS = 0.0, gammaA = -0.04, gammaR = 0.1, gammaD = 0.09, hA = 0.15, hR = 0.5)
-      ## Δx = 1e-2
-      ## Np = 250
-#     # funziona con A D e R
+# # Np=256
+# # tau= 0.05
+# # SARDp = list(gammaS = 0.0, gammaA = -0.035, gammaR = 0.05, gammaD = 0.105, hA = 0.15, hR = 0.4)
 #     Nx = Int(1/Δx)
 #     x = 0.0:Δx:(1-Δx)
 #     y = 0.0:Δx:(1-Δx)
@@ -100,7 +98,7 @@ end
     
 #     u0 = (0.6*[pdf(MvNormal(center1,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+ 
 #          .+ 0.45*[pdf(MvNormal(center2,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+
-#          .+ 0.4*[pdf(MvNormal(center3,0.005*I(2)),[xi,yi]) for xi in x, yi in y])
+#          .+ 0.55*[pdf(MvNormal(center3,0.005*I(2)),[xi,yi]) for xi in x, yi in y])
 
 #     u0 .= u0 .+ 0.1
 #     # u0 .= imfilter(u0,Whu0,Pad(:circular,Nx,Nx))*Δx^2
@@ -121,7 +119,7 @@ function make_u0(Δx,Whu0)
     
     u0 = (0.6*[pdf(MvNormal(center1,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+ 
          .+ 0.45*[pdf(MvNormal(center2,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+
-         .+ 0.4*[pdf(MvNormal(center3,0.005*I(2)),[xi,yi]) for xi in x, yi in y])
+         .+ 0.55*[pdf(MvNormal(center3,0.005*I(2)),[xi,yi]) for xi in x, yi in y])
 
     u0 .= u0 .+ 0.1
     # u0 .= imfilter(u0,Whu0,Pad(:circular,Nx,Nx))*Δx^2
@@ -141,7 +139,7 @@ function df!(du,u,p,t)
           + SARDp.gammaA * (∂x(u .* ∂x(WhAu)) +  ∂y(u .* ∂y(WhAu))) +
           + SARDp.gammaR * (∂x(u .* ∂x(WhRu)) +  ∂y(u .* ∂y(WhRu))) +
           + SARDp.gammaD * Δ(u))
-    # @show t
+    @show t
 end
 
 

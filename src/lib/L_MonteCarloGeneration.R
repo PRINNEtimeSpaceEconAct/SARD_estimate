@@ -38,7 +38,7 @@ createShape <- function(N=100, typeOfDist="VoronoiUniform", meanNorm=0.5,
         }
     }
     else {
-        grid_st = st_make_grid(squareSfc,cellsize = 1/sqrt(N))
+        grid_st = st_make_grid(squareSfc,n = round(sqrt(N)))
         grid_sf = st_sf(geom=grid_st,crs = "WGS84")
         attr(st_geometry(grid_sf), "bbox") = squareBox
         sf_out = grid_sf

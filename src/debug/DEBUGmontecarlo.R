@@ -24,12 +24,12 @@ typeOfEst = "LM"
 # SARDp = list(gammaS = 0.0, gammaA = -0.05, gammaR = 0.0, gammaD = 0.03, hA = 0.3, hR = 0.4)
 
 # funzionano A R e D
-# Np=250
+# Np=256
 # tau= 0.05
-# SARDp = list(gammaS = 0.0, gammaA = -0.03, gammaR = 0.1, gammaD = 0.09, hA = 0.15, hR = 0.4)
+# SARDp = list(gammaS = 0.0, gammaA = -0.035, gammaR = 0.05, gammaD = 0.105, hA = 0.15, hR = 0.4)
 
 # parameters estimation PDE ----
-SARDp = list(gammaS = 0.0, gammaA = -0.03, gammaR = 0.1, gammaD = 0.09, hA = 0.15, hR = 0.4)
+SARDp = list(gammaS = 0.0, gammaA = -0.035, gammaR = 0.05, gammaD = 0.105, hA = 0.15, hR = 0.4)
 resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform = MonteCarloOneRun_LM_PDE_fixedhAhR(Np, tau, typeOfDist = "Uniform",typeOfEst=typeOfEst,SARDp,SARDp$hA,SARDp$hR,torus=TRUE)
 LM_est = resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform$outEstimate$LM_est; s = summary(LM_est)
 summary(LM_est)
@@ -38,7 +38,7 @@ print(paste("xR in ",round(abs(SARDp$gammaR-LM_est$coefficients["xR"])/s$coeffic
 print(paste("xD in ",round(abs(SARDp$gammaD-LM_est$coefficients["xD"])/s$coefficients["xD","Std. Error"],digits=2)," std. error",sep=""))
 
 # parameters estimation Agents ----
-SARDp = list(gammaS = 0.0, gammaA = -0.03, gammaR = 0.1, gammaD = 0.09, hA = 0.15, hR = 0.4)
+SARDp = list(gammaS = 0.0, gammaA = -0.035, gammaR = 0.05, gammaD = 0.105, hA = 0.15, hR = 0.4)
 resultMonteCarloOneRun_LM_Agents_fixedhAhRUniform = MonteCarloOneRun_LM_Agents_fixedhAhR(Np,Na,tau,typeOfDist = "Uniform",typeOfEst=typeOfEst,SARDp,SARDp$hA,SARDp$hR,torus=TRUE)
 LM_est = resultMonteCarloOneRun_LM_Agents_fixedhAhRUniform$outEstimate$LM_est; s = summary(LM_est)
 summary(LM_est)
@@ -46,7 +46,47 @@ print(paste("xA in ",round(abs(SARDp$gammaA-LM_est$coefficients["xA"])/s$coeffic
 print(paste("xR in ",round(abs(SARDp$gammaR-LM_est$coefficients["xR"])/s$coefficients["xR","Std. Error"],digits=2)," std. error",sep=""))
 print(paste("xD in ",round(abs(SARDp$gammaD-LM_est$coefficients["xD"])/s$coefficients["xD","Std. Error"],digits=2)," std. error",sep=""))
 
+# parameter estimation PDE with noise ----
+SARDp = list(gammaS = 0.0, gammaA = -0.035, gammaR = 0.05, gammaD = 0.105, hA = 0.15, hR = 0.4)
+data = resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform$data
+shp_MC = resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform$shp
+postEstimateLM = estimate_LMfromData(data,SARDp$hA,SARDp$hR,shp_MC,SARDp)
+LM_est = postEstimateLM$LM_est
+print(paste("xA in ",round(abs(SARDp$gammaA-LM_est$coefficients["xA"])/s$coefficients["xA","Std. Error"],digits=2)," std. error",sep=""))
+print(paste("xR in ",round(abs(SARDp$gammaR-LM_est$coefficients["xR"])/s$coefficients["xR","Std. Error"],digits=2)," std. error",sep=""))
+print(paste("xD in ",round(abs(SARDp$gammaD-LM_est$coefficients["xD"])/s$coefficients["xD","Std. Error"],digits=2)," std. error",sep=""))
 
+## with white noise ----
+data = resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform$data
+shp_MC = resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform$shp
+noise0 = rnorm(nrow(shp_MC),sad=0.01)
+noiseT = rnorm(nrow(shp_MC),sd=0.01)
+data$y0 = data$y0 + noise0
+shp_MC$y0 = shp_MC$y0 + noise0
+data$yT = data$yT + noise0
+shp_MC$yT = shp_MC$yT + noiseT
+data$delta = (data$yT - data$y0)/tau
+shp_MC$delta = (shp_MC$yT - shp_MC$y0)/tau
+
+postEstimateLM_NOISE = estimate_LMfromData(data,SARDp$hA,SARDp$hR,shp_MC,SARDp)
+LM_est = postEstimateLM_NOISE$LM_est
+summary(LM_est)
+print(paste("xA in ",round(abs(SARDp$gammaA-LM_est$coefficients["xA"])/s$coefficients["xA","Std. Error"],digits=2)," std. error",sep=""))
+print(paste("xR in ",round(abs(SARDp$gammaR-LM_est$coefficients["xR"])/s$coefficients["xR","Std. Error"],digits=2)," std. error",sep=""))
+print(paste("xD in ",round(abs(SARDp$gammaD-LM_est$coefficients["xD"])/s$coefficients["xD","Std. Error"],digits=2)," std. error",sep=""))
+
+## with agents noise
+data = resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform$data
+shp_MC = resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform$shp
+error0 = resultMonteCarloOneRun_LM_Agents_fixedhAhRUniform$data$y0 - resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform$data$y0
+errorT = resultMonteCarloOneRun_LM_Agents_fixedhAhRUniform$data$yT - resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform$data$yT
+shp_MC = shp_MC %>% mutate(error0 = error0, errorT = errorT)
+plot(select(shp_MC,c(y0,error0)))
+
+library(mgcv)
+gamreg = gam((shp_MC$error0)^2 ~ s(shp_MC$y0))
+plot(gamreg)
+points(shp_MC$y0,shp_MC$error0^2,cex=0.5)
 
 # montecarlo PDE one run with fixed hA hR ----
 # resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform = MonteCarloOneRun_LM_PDE_fixedhAhR(Np, tau, typeOfDist = "Uniform",typeOfEst=typeOfEst,SARDp,SARDp$hA,SARDp$hR,torus=TRUE)
@@ -96,75 +136,75 @@ print(paste("xD in ",round(abs(SARDp$gammaD-LM_est$coefficients["xD"])/s$coeffic
 
 # plot shp ----
 # shp_regressors = resultMonteCarloOneRun_LM_Agents_fixedhAhR$outLMEstimate$shp_regressors
-regression = resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform
-regressionLM = regression$outEstimate$LM_est
-shp_regressors = regression$outEstimate$shp_regressors
-plot(cbind(shp_regressors,resid = scale((resid(regressionLM))))["resid"])
-
-
-plot(shp_regressors[c("y0","yT")],key.pos=4)
-plot(shp_regressors[c("y0","WhAy0")],key.pos=4)
-plot(shp_regressors[c("y0","WhRy0")],key.pos=4)
-plot(shp_regressors[c("delta")],key.pos=4)
-plot(shp_regressors[c("xA")],key.pos=4)
-plot(shp_regressors[c("MADelta")],key.pos=4)
-plot(mutate(shp_regressors,xA=xA)[c("xA","delta")],key.pos=4)
-plot(mutate(shp_regressors,ratio = xA/delta)["ratio"],key.pos=4)
-plot(mutate(shp_regressors,diff = -0.1*xA-delta)["diff"],key.pos=4)
-plot(shp_regressors["xD"],key.pos=4)
-
-testShp = mutate(shp_regressors, "Mxx" = as.matrix(resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$outEstimate$MsDeriv$Mxx) %*% y0, "MxMx" = as.matrix(resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$outLMEstimate$MsDeriv$Mx) %*%  as.matrix(resultMonteCarloOneRun_LM_PDE_fixedhAhR$outLMEstimate$MsDeriv$Mx) %*% y0)
-plot(testShp[c("Mxx","MxMx")])
-
-library(plotly)
-plotVar <- function(estimate,name){
-    df = data.frame(x = estimate$shp$Longitude, y = estimate$shp$Latitude, z = estimate$outLMEstimate$shp_regressors[[eval(name)]])
-    plot_ly(df,x = ~x,y = ~y, z = ~z, color = I("red"), type = "mesh3d",size = 0.1, showlegend = FALSE)
-}
-df = data.frame(x = resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi2Uniform$shp$Longitude, y = resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi2Uniform$shp$Latitude, z = resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi2Uniform$outLMEstimate$shp_regressors$y0)
-plot_ly(df,x = ~x,y = ~y, z = ~z, color = I("red"), type = "mesh3d",size = 0.1, showlegend = FALSE)
-
-
-# confronto voronoi uniforme ----
-resultMonteCarloOneRun_LM_PDE_fixedhAhRUniforme = MonteCarloOneRun_LM_PDE_fixedhAhR(Np, tau, typeOfDist = "Uniform",SARDp,SARDp$hA,SARDp$hR,torus=TRUE)
-resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi = MonteCarloOneRun_LM_PDE_fixedhAhR(Np, tau, typeOfDist = "VoronoiUniform",SARDp,SARDp$hA,SARDp$hR,torus=TRUE)
-cor(resultMonteCarloOneRun_LM_PDE_fixedhAhRUniforme$outLMEstimate$LM_est$model$delta,resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$outLMEstimate$LM_est$model$delta)
-cor(resultMonteCarloOneRun_LM_PDE_fixedhAhRUniforme$outLMEstimate$LM_est$model$MADelta,resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$outLMEstimate$LM_est$model$MADelta)
-
-# spatial test on residuals
-library(spdep)
-# first-order contiguity matrix
-shpVoronoi=resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$shp
-contig = poly2nb(shpVoronoi)
-lm.morantest(resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$outLMEstimate$LM_est, listw=nb2listw(contig, style="W"))
-
-corSpat=sp.correlogram(contig, resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$outLMEstimate$LM_est$residuals, order=5, method = "I")
-plot(corSpat)
-
-# pseudo R2 ----
-df = resultMonteCarloOneRun_LM_Agents_fixedhAhR$outLMEstimate$shp_regressors
-RSSIV = mean((resultMonteCarloOneRun_LM_Agents_fixedhAhR$outLMEstimate$LM_est$residuals)^2)
-delta = df$delta.x
-RSSNULL = mean((delta-mean(delta))^2)
-PR2 = 1-RSSIV/RSSNULL
-print(PR2)
-
-
-# cross-section ----
-library(mgcv)
-library(sm)
-# df = filter(df,df$xA < 0)
-lmModel = lm(delta.x ~ 0 + xD + MDDelta ,data = df)
-smreg = sm.regression(df$xD,df$delta.x)
+# regression = resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform
+# regressionLM = regression$outEstimate$LM_est
+# shp_regressors = regression$outEstimate$shp_regressors
+# plot(cbind(shp_regressors,resid = scale((resid(regressionLM))))["resid"])
+# 
+# 
+# plot(shp_regressors[c("y0","yT")],key.pos=4)
+# plot(shp_regressors[c("y0","WhAy0")],key.pos=4)
+# plot(shp_regressors[c("y0","WhRy0")],key.pos=4)
+# plot(shp_regressors[c("delta")],key.pos=4)
+# plot(shp_regressors[c("xA")],key.pos=4)
+# plot(shp_regressors[c("MADelta")],key.pos=4)
+# plot(mutate(shp_regressors,xA=xA)[c("xA","delta")],key.pos=4)
+# plot(mutate(shp_regressors,ratio = xA/delta)["ratio"],key.pos=4)
+# plot(mutate(shp_regressors,diff = -0.1*xA-delta)["diff"],key.pos=4)
+# plot(shp_regressors["xD"],key.pos=4)
+# 
+# testShp = mutate(shp_regressors, "Mxx" = as.matrix(resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$outEstimate$MsDeriv$Mxx) %*% y0, "MxMx" = as.matrix(resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$outLMEstimate$MsDeriv$Mx) %*%  as.matrix(resultMonteCarloOneRun_LM_PDE_fixedhAhR$outLMEstimate$MsDeriv$Mx) %*% y0)
+# plot(testShp[c("Mxx","MxMx")])
+# 
+# library(plotly)
+# plotVar <- function(estimate,name){
+#     df = data.frame(x = estimate$shp$Longitude, y = estimate$shp$Latitude, z = estimate$outLMEstimate$shp_regressors[[eval(name)]])
+#     plot_ly(df,x = ~x,y = ~y, z = ~z, color = I("red"), type = "mesh3d",size = 0.1, showlegend = FALSE)
+# }
+# df = data.frame(x = resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi2Uniform$shp$Longitude, y = resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi2Uniform$shp$Latitude, z = resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi2Uniform$outLMEstimate$shp_regressors$y0)
+# plot_ly(df,x = ~x,y = ~y, z = ~z, color = I("red"), type = "mesh3d",size = 0.1, showlegend = FALSE)
+# 
+# 
+# # confronto voronoi uniforme ----
+# resultMonteCarloOneRun_LM_PDE_fixedhAhRUniforme = MonteCarloOneRun_LM_PDE_fixedhAhR(Np, tau, typeOfDist = "Uniform",SARDp,SARDp$hA,SARDp$hR,torus=TRUE)
+# resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi = MonteCarloOneRun_LM_PDE_fixedhAhR(Np, tau, typeOfDist = "VoronoiUniform",SARDp,SARDp$hA,SARDp$hR,torus=TRUE)
+# cor(resultMonteCarloOneRun_LM_PDE_fixedhAhRUniforme$outLMEstimate$LM_est$model$delta,resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$outLMEstimate$LM_est$model$delta)
+# cor(resultMonteCarloOneRun_LM_PDE_fixedhAhRUniforme$outLMEstimate$LM_est$model$MADelta,resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$outLMEstimate$LM_est$model$MADelta)
+# 
+# # spatial test on residuals
+# library(spdep)
+# # first-order contiguity matrix
+# shpVoronoi=resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$shp
+# contig = poly2nb(shpVoronoi)
+# lm.morantest(resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$outLMEstimate$LM_est, listw=nb2listw(contig, style="W"))
+# 
+# corSpat=sp.correlogram(contig, resultMonteCarloOneRun_LM_PDE_fixedhAhRVoronoi$outLMEstimate$LM_est$residuals, order=5, method = "I")
+# plot(corSpat)
+# 
+# # pseudo R2 ----
+# df = resultMonteCarloOneRun_LM_Agents_fixedhAhR$outLMEstimate$shp_regressors
+# RSSIV = mean((resultMonteCarloOneRun_LM_Agents_fixedhAhR$outLMEstimate$LM_est$residuals)^2)
+# delta = df$delta.x
+# RSSNULL = mean((delta-mean(delta))^2)
+# PR2 = 1-RSSIV/RSSNULL
+# print(PR2)
+# 
+# 
+# # cross-section ----
+# library(mgcv)
+# library(sm)
+# # df = filter(df,df$xA < 0)
+# lmModel = lm(delta.x ~ 0 + xD + MDDelta ,data = df)
+# smreg = sm.regression(df$xD,df$delta.x)
+# # lines(smreg$eval.points,coef(lmModel)[1]*smreg$eval.points,col="red")
+# # lines(smreg$eval.points,SARDp$gammaA*smreg$eval.points,col="blue")
+# # abline(v = 0)
+# gamreg = gam(df$delta.x ~ s(df$xD)+s(df$MDDelta))
+# plot(gamreg,select=1)
+# points(df$xA,df$delta.x,pch=19,cex=0.2)
 # lines(smreg$eval.points,coef(lmModel)[1]*smreg$eval.points,col="red")
-# lines(smreg$eval.points,SARDp$gammaA*smreg$eval.points,col="blue")
+# lines(smreg$eval.points,SARDp$gammaD*smreg$eval.points,col="blue")
 # abline(v = 0)
-gamreg = gam(df$delta.x ~ s(df$xD)+s(df$MDDelta))
-plot(gamreg,select=1)
-points(df$xA,df$delta.x,pch=19,cex=0.2)
-lines(smreg$eval.points,coef(lmModel)[1]*smreg$eval.points,col="red")
-lines(smreg$eval.points,SARDp$gammaD*smreg$eval.points,col="blue")
-abline(v = 0)
-abline(h=0)
-
-
+# abline(h=0)
+# 
+# 

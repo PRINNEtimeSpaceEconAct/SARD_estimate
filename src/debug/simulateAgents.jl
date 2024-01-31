@@ -574,7 +574,7 @@ function make_u0(Δx,Whu0)
     
     u0 = (0.6*[pdf(MvNormal(center1,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+ 
          .+ 0.45*[pdf(MvNormal(center2,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+
-         .+ 0.4*[pdf(MvNormal(center3,0.005*I(2)),[xi,yi]) for xi in x, yi in y])
+         .+ 0.55*[pdf(MvNormal(center3,0.005*I(2)),[xi,yi]) for xi in x, yi in y])
 
     u0 .= u0 .+ 0.1
     # u0 .= imfilter(u0,Whu0,Pad(:circular,Nx,Nx))*Δx^2
@@ -584,7 +584,7 @@ function make_u0(Δx,Whu0)
 end
 
 tau = 0.05
-SARDp = (gammaS = 0.0, gammaA = -0.03, gammaR = 0.1, gammaD = 0.09, hA = 0.15, hR = 0.5)
+SARDp = (gammaS = 0.0, gammaA = -0.035, gammaR = 0.05, gammaD = 0.105, hA = 0.15, hR = 0.4)
 sol,xS,xA,xR,xD  = computePDEInteractive(tau,SARDp)
 yT,xS,xA,xR,xD = computeStep(tau,SARDp)
 plotPDE(sol)

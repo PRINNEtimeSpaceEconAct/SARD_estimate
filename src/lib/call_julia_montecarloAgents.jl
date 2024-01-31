@@ -31,6 +31,27 @@ function computeAgents(Nm,Na,tau,SARDp)
     return Agents0,AgentsT
 end
 
+function make_u0(Δx,Whu0)
+    Nx = Int(1/Δx)
+    x = 0.0:Δx:(1-Δx)
+    y = 0.0:Δx:(1-Δx)
+    
+    center1 = [0.45,0.75]
+    center2 = [0.65,0.75]
+    center3 = [0.5,0.3]
+
+    
+    u0 = (0.6*[pdf(MvNormal(center1,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+ 
+         .+ 0.45*[pdf(MvNormal(center2,0.005*I(2)),[xi,yi]) for xi in x, yi in y] .+
+         .+ 0.55*[pdf(MvNormal(center3,0.005*I(2)),[xi,yi]) for xi in x, yi in y])
+
+    u0 .= u0 .+ 0.1
+    # u0 .= imfilter(u0,Whu0,Pad(:circular,Nx,Nx))*Δx^2
+    u0 .= u0/sum(u0*Δx^2)
+
+    return u0
+end
+
 function init_system(;Na::Int=200,cutoff::Float64=0.1)
     unitcell = SVector(1.0,1.0)
     # positions = generatePositions(Na) 

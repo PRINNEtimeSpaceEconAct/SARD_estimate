@@ -15,6 +15,7 @@ suppressPackageStartupMessages(library(pracma))
 suppressPackageStartupMessages(library(spatstat.geom))
 suppressPackageStartupMessages(library(buildmer))
 suppressPackageStartupMessages(library(JuliaCall))
+suppressPackageStartupMessages(library(cvCovEst))
 
 # sources ----
 source("lib/L_data.R")
@@ -34,4 +35,6 @@ Sys.setenv(JULIA_NUM_THREADS = "8")
 DEBUG = FALSE
 PARALLEL = FALSE
 NPROCS = 1
+
+# install.packages(c("MASS","dplyr","spdep","spatialreg","gamlr","sf","sfheaders","Matrix","snow","plm","AER","pracma","spatstat.geom","buildmer","JuliaCall"))
 
