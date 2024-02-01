@@ -268,5 +268,25 @@ function particleOut(position)
     end
 end
 
+function W(x)
+    """ smoothing kernel """
+    return norm(x) <= 1 ? 1/(2*pi*(log(2)-1/2)) * 1/(norm(x)+1)^2 : 0.0
+end
 
+function W(x,h)
+    """ rescaled kernel """
+    return 1/h^2*W(x/h)
+end
+
+function make_WDiscrete(Δx,bandwith)
+    Npt = ceil(Int,bandwith/Δx)
+    Wd = zeros(2Npt+1,2Npt+1)
+    x = -Npt*Δx:Δx:Npt*Δx
+    y = -Npt*Δx:Δx:Npt*Δx
+    for i in 1:length(x), j in 1:length(y)
+        Wd[i,j] = W([x[i],y[j]],bandwith)
+    end
+    Wd .= Wd/sum(Wd*Δx^2)
+    return Wd
+end
 

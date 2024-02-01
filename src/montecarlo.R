@@ -11,9 +11,22 @@ tau= 0.05
 NeS = 100
 SARDp = list(gammaS = 0.0, gammaA = -0.035, gammaR = 0.05, gammaD = 0.105, hA = 0.15, hR = 0.4)
 
+# PDE once
+# PDEAll = call_julia_computePDE(tau,SARDp)
+# save(PDEAll,file="PDE.RData")
 
-# Np 256 ----
-Np=256
-resultMonteCarloOneRun_LM_PDE_fixedhAhRUniform = MonteCarloOneRun_LM_PDE_fixedhAhR(Np, tau, typeOfDist = "Uniform",typeOfEst=typeOfEst,SARDp,SARDp$hA,SARDp$hR,torus=TRUE)
+# Agents for error
+NSigma = 100
 
-resultMonteCarloOneRun_LM_Agents_fixedhAhRUniform = MonteCarloOneRun_LM_Agents_fixedhAhR(Np,Na,tau,typeOfDist = "Uniform",typeOfEst=typeOfEst,SARDp,SARDp$hA,SARDp$hR,torus=TRUE)
+# Na = 50000
+# AgentsAll = call_julia_computeAgents(NSigma,Na,tau,SARDp)
+# save(AgentsAll,file="AgentsAll50k.RData")
+
+# Na = 100000
+# AgentsAll = call_julia_computeAgents(NSigma,Na,tau,SARDp)
+# save(AgentsAll,file="AgentsAll100k.RData")
+
+# Na = 200000
+# AgentsAll = call_julia_computeAgents(NSigma,Na,tau,SARDp)
+# save(AgentsAll,file="AgentsAll200k.RData")
+
