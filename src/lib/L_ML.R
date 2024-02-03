@@ -149,8 +149,8 @@ compute_spatial_error_mat <- function(residWN,shp,
     # nonsignificant coefficient in the decomposition
     maxLag=min(maxLag, floor(sqrt(length(residWN))))
     
-    suppressWarnings(sf_use_s2(FALSE))
-    suppressWarnings(spatialNeighbors <- poly2nb(shp))
+    sink <- capture.output(sf::sf_use_s2(FALSE))
+    suppressMessages(spatialNeighbors <- poly2nb(shp,queen=TRUE))
     suppressWarnings(spatialNeighbors.lag <- nblag(spatialNeighbors, maxLag))
     
     maxLag = length(spatialNeighbors.lag)
@@ -186,15 +186,14 @@ compute_spatial_error_mat <- function(residWN,shp,
     maxSignifLag = max(Position(function(x) x==TRUE,
                             colSums(rbind(pValuesLarge,c(pValuesLarge[2:maxLag],
                                                          FALSE))) == 2) - 1,1)
-    
+    if (is.na(maxSignifLag)) { maxSignifLag = maxLag}    
 
     Werr = s.errDecompose$coefficients[1,"Estimate"]*WPartial[[1]]
-    if (is.na(maxSignifLag)) {return(listN(maxSignifLag,Werr,lm.errDecompose,spatialNeighbors.lag)) }
-    
+        
     if (maxSignifLag == 1){ return(listN(maxSignifLag,Werr,lm.errDecompose,spatialNeighbors.lag)) }
     
     for (i in 2:maxSignifLag){
         Werr = Werr + s.errDecompose$coefficients[i,"Estimate"]*WPartial[[i]]}
     
-    return(listN(maxSignifLag,Werr,lm.errDecompose,spatialNeighbors.lag))
+    return(listN(maxSignifLag,Werr,lm.errDecompose,spatialNeighbors))
 }

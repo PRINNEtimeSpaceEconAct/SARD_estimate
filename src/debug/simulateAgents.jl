@@ -12,6 +12,22 @@ using LoopVectorization
 using DifferentialEquations
 using ImageFiltering
 
+function Sfun(x,y)
+    return exp(-((x-0.6)^2)/0.02)
+end
+
+function Sfun(p)
+    return (Sfun(p[1],p[2]))
+end
+
+function ∇Sfun(p)
+    return ForwardDiff.gradient(Sfun,p)
+end
+
+function ∇Sfun(x,y)
+    return ForwardDiff.gradient(Sfun,[x,y])
+end
+
 # using CellListMap.PeriodicSystems
 # import CellListMap.wrap_relative_to
 # import CellListMap.limits, CellListMap.Box
@@ -191,21 +207,7 @@ using ImageFiltering
 # #     end
 # # end
 
-function Sfun(x,y)
-    return exp(-((x-0.6)^2)/0.02)
-end
 
-function Sfun(p)
-    return (Sfun(p[1],p[2]))
-end
-
-function ∇Sfun(p)
-    return ForwardDiff.gradient(Sfun,p)
-end
-
-function ∇Sfun(x,y)
-    return ForwardDiff.gradient(Sfun,[x,y])
-end
 
 # function computeS(Npt,Sfun)
 #     # return X,Y,S of size (Ne_x x Ne_y) 
@@ -308,6 +310,54 @@ end
 #     KDEest0 = pdf(kde(vecvec2mat(trajectory[1]),boundary=((0.0,1.0),(0.0,1.0))),x,y)
 #     contour!(x,y,KDEest0,size=(1000, 1000),cbar=false,clabels=true,color=:red)
 # end 
+
+# function densityInitialCondition(;Δx = 1e-2)
+#     Nx = Int(1/Δx)
+#     x = LinRange(0,1-Δx,Nx)
+#     y = LinRange(0,1-Δx,Nx)
+#     X = repeat(x',Nx,1)
+#     Y = repeat(y,1,Nx)
+#     Whu0 = make_WDiscrete(Δx,0.1)
+    
+    
+#     u0 = make_u0(Δx,Whu0)
+#     maxu0 = maximum(u0)
+#     nodes = (x,y)
+#     u0Fun = extrapolate(interpolate(nodes,u0,Gridded(Linear(Periodic()))),Periodic())
+    
+#     return u0Fun, maxu0
+# end
+
+# function sampleFromDensity(densityFun,maxDensity,N)
+#     samples = zeros(0,2)
+#     while size(samples,1) < N
+#         Nmissing = N - size(samples,1)
+#         x = rand(Nmissing,2)
+#         values = densityFun.(x[:,1],x[:,2])
+#         y = maxDensity*rand(Nmissing)
+#         acceptedSamples = x[findall(y .<= values),:]
+#         samples = vcat(acceptedSamples,samples)
+#     end
+#     samples = samples[1:N,:]
+#     samplesSvec = [SVector{2,Float64}(samples[i,:]) for i in 1:N]
+#     return samplesSvec
+# end
+
+# Na = 1000
+# function generatePositions(Na)
+#     σ = 0.05
+#     X = MvNormal([0.5,0.5],σ*I(2))
+
+#     positions = [SVector{2,Float64}(rand(X)) for _ in 1:Na]
+#     while any(particleOut.(positions))
+#         positions[particleOut.(positions)] = 
+#             [SVector{2,Float64}(rand(X)) for _ in 1:sum(particleOut.(positions))]
+#     end
+
+#     return positions
+# end
+    
+    
 
 # # test parameter configurations
 # SARDp = (gammaS = -0.5, gammaA = -0.1, gammaR = 0.05, gammaD = 0.001, hA = 0.3, hR = 0.35)
@@ -562,6 +612,7 @@ function plotSurf(f)
     surface(f,zlims=[min(minimum(f),0),maximum(f)],size = [1000,1000])
 end
 
+
 function make_u0(Δx,Whu0)
     Nx = Int(1/Δx)
     x = 0.0:Δx:(1-Δx)
@@ -583,58 +634,13 @@ function make_u0(Δx,Whu0)
     return u0
 end
 
-tau = 0.05
-SARDp = (gammaS = 0.0, gammaA = -0.035, gammaR = 0.05, gammaD = 0.105, hA = 0.15, hR = 0.4)
-sol,xS,xA,xR,xD  = computePDEInteractive(tau,SARDp)
-yT,xS,xA,xR,xD = computeStep(tau,SARDp)
+
+tau = 0.3
+SARDp = (gammaS = 0.0, gammaA = -0.01, gammaR = 0.02, gammaD = 0.02, hA = 0.15, hR = 0.4)
+sol,xS,xA,xR,xD  = computePDEInteractive(tau,SARDp);
+yT,xS,xA,xR,xD = computeStep(tau,SARDp);
 plotPDE(sol)
 plotSurf(sol[end]-yT)
 
 
-
-function densityInitialCondition(;Δx = 1e-2)
-    Nx = Int(1/Δx)
-    x = LinRange(0,1-Δx,Nx)
-    y = LinRange(0,1-Δx,Nx)
-    X = repeat(x',Nx,1)
-    Y = repeat(y,1,Nx)
-    Whu0 = make_WDiscrete(Δx,0.1)
-    
-    
-    u0 = make_u0(Δx,Whu0)
-    maxu0 = maximum(u0)
-    nodes = (x,y)
-    u0Fun = extrapolate(interpolate(nodes,u0,Gridded(Linear(Periodic()))),Periodic())
-    
-    return u0Fun, maxu0
-end
-
-function sampleFromDensity(densityFun,maxDensity,N)
-    samples = zeros(0,2)
-    while size(samples,1) < N
-        Nmissing = N - size(samples,1)
-        x = rand(Nmissing,2)
-        values = densityFun.(x[:,1],x[:,2])
-        y = maxDensity*rand(Nmissing)
-        acceptedSamples = x[findall(y .<= values),:]
-        samples = vcat(acceptedSamples,samples)
-    end
-    samples = samples[1:N,:]
-    samplesSvec = [SVector{2,Float64}(samples[i,:]) for i in 1:N]
-    return samplesSvec
-end
-
-Na = 1000
-function generatePositions(Na)
-    σ = 0.05
-    X = MvNormal([0.5,0.5],σ*I(2))
-
-    positions = [SVector{2,Float64}(rand(X)) for _ in 1:Na]
-    while any(particleOut.(positions))
-        positions[particleOut.(positions)] = 
-            [SVector{2,Float64}(rand(X)) for _ in 1:sum(particleOut.(positions))]
-    end
-
-    return positions
-end
 

@@ -27,8 +27,6 @@ createShape <- function(N=100, typeOfDist="VoronoiUniform", meanNorm=0.5,
             # compute voronoy polygon
             voronoiPoly = st_voronoi(st_union(voronoiPoints), squareSfc)
             
-            # voronoiPoly = st_triangulate(voronoiPoints)
-            
             # create sf object
             voronoiGeom = st_geometrycollection(voronoiPoly)
             voronoiGeomColl = st_collection_extract(voronoiGeom)

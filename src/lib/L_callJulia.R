@@ -119,6 +119,47 @@ call_julia_LogLik <- function(X,Y,MS,MA,MR,MD,Weps,initialCondition){
     return(listN(coef, se_coef, pvalue_coef, residuals))
 }
 
+call_julia_LogLik_WN_3Mat <- function(X,Y,MA,MR,MD,initialCondition){
+    
+    # initJulia()
+    julia_command('include("lib/call_julia_LogLik.jl")')
+    julia_assign("X",X)
+    julia_assign("Y",Y)
+    julia_assign("MA",as.matrix(MA))
+    julia_assign("MR",as.matrix(MR))
+    julia_assign("MD",as.matrix(MD))
+    julia_assign("initialCondition",initialCondition)
+    
+    outJulia = julia_eval('julia_LogLik_WN_3Mat(X,Y,MA,MR,MD,initialCondition)')
+    coef = outJulia[[1]]
+    se_coef = outJulia[[2]]
+    pvalue_coef = outJulia[[3]]
+    residuals = outJulia[[4]]
+    
+    return(listN(coef, se_coef, pvalue_coef, residuals))
+}
+
+call_julia_LogLik_3Mat <- function(X,Y,MA,MR,MD,Weps,initialCondition){
+    
+    # initJulia()
+    julia_command('include("lib/call_julia_LogLik.jl")')
+    julia_assign("X",X)
+    julia_assign("Y",Y)
+    julia_assign("MA",as.matrix(MA))
+    julia_assign("MR",as.matrix(MR))
+    julia_assign("MD",as.matrix(MD))
+    julia_assign("Weps",as.matrix(Weps))
+    julia_assign("initialCondition",initialCondition)
+    
+    outJulia = julia_eval('julia_LogLik_3Mat(X,Y,MA,MR,MD,Weps,initialCondition)')
+    coef = outJulia[[1]]
+    se_coef = outJulia[[2]]
+    pvalue_coef = outJulia[[3]]
+    residuals = outJulia[[4]]
+    
+    return(listN(coef, se_coef, pvalue_coef, residuals))
+}
+
 call_julia_LogLik_WN_1Mat <- function(X,Y,W1,initialCondition){
 
     # initJulia()
