@@ -108,7 +108,7 @@ for (m in 1:NSigma){
 close(pb)
 
 Sigma50k225 = cvCovEst(error50k)
-# save(Sigma50k225,file="../datasets_montecarlo/Sigma50k225.RData")
+save(Sigma50k225,file="../datasets_montecarlo/Sigma50k225.RData")
 load(file="../datasets_montecarlo/Sigma50k225.RData")
 
 ## montecarlo ----
@@ -217,7 +217,7 @@ for (m in 1:NSigma){
 close(pb)
 
 Sigma50k256 = cvCovEst(error50k)
-# save(Sigma50k256,file="../datasets_montecarlo/Sigma50k256.RData")
+save(Sigma50k256,file="../datasets_montecarlo/Sigma50k256.RData")
 load(file="../datasets_montecarlo/Sigma50k256.RData")
 
 ## montecarlo ----
@@ -326,7 +326,7 @@ for (m in 1:NSigma){
 close(pb)
 
 Sigma50k289 = cvCovEst(error50k)
-# save(Sigma50k289,file="../datasets_montecarlo/Sigma50k289.RData")
+save(Sigma50k289,file="../datasets_montecarlo/Sigma50k289.RData")
 load(file="../datasets_montecarlo/Sigma50k289.RData")
 
 ## montecarlo ----
