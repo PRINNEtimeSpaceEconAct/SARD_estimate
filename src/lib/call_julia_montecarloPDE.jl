@@ -96,16 +96,16 @@ function Δ(u)
     Δx = 1/Nx
     Δu = similar(u)
 
-    for i in 2:Nx-1, j in 2:Nx-1
+    @tturbo for i in 2:Nx-1, j in 2:Nx-1
         Δu[i,j] = 1/(Δx)^2 * (u[i-1,j] + u[i+1,j] + u[i,j-1] + u[i,j+1] - 4*u[i,j])
     end
 
     # torus
-    for i in 2:Nx-1   
+    @tturbo for i in 2:Nx-1   
         Δu[i,1] = 1/(Δx)^2 * (u[i-1,1] + u[i+1,1] + u[i,Nx] + u[i,2] - 4*u[i,1])
         Δu[i,Nx] = 1/(Δx)^2 * (u[i-1,Nx] + u[i+1,Nx] + u[i,Nx-1] + u[i,1] - 4*u[i,Nx])
     end
-    for j = 2:Nx-1
+    @tturbo for j = 2:Nx-1
         Δu[1,j] = 1/(Δx)^2 * (u[2,j] + u[1,j-1] + u[1,j+1] + u[Nx,j] - 4*u[1,j])
         Δu[Nx,j] = 1/(Δx)^2 * (u[Nx-1,j] + u[Nx,j-1] + u[Nx,j+1] + u[1,j] - 4*u[Nx,j])
     end
@@ -122,12 +122,12 @@ function ∂x(u)
     Δx = 1/Nx
 
     ∂x = similar(u)
-    for i in 2:(Nx-1), j in 1:Nx
+    @tturbo for i in 2:(Nx-1), j in 1:Nx
         ∂x[i,j] = 1/(2*Δx) * (u[i+1,j] - u[i-1,j])
     end
 
     # torus
-    for j in 1:Nx
+    @tturbo for j in 1:Nx
         ∂x[1,j] =  1/(2*Δx) * (u[2,j] - u[Nx,j])
         ∂x[Nx,j] = 1/(2*Δx) * (u[1,j] - u[Nx-1,j]) 
     end
@@ -140,12 +140,12 @@ function ∂y(u)
 
     ∂y = similar(u)
 
-    for i in 1:Nx, j in 2:(Nx-1)
+    @tturbo for i in 1:Nx, j in 2:(Nx-1)
         ∂y[i,j] = 1/(2*Δx) * (u[i,j+1] - u[i,j-1])
     end
 
     # torus
-    for i in 1:Nx
+    @tturbo for i in 1:Nx
         ∂y[i,1] =  1/(2*Δx) * (u[i,2] - u[i,Nx])
         ∂y[i,Nx] = 1/(2*Δx) * (u[i,1] - u[i,Nx-1]) 
     end

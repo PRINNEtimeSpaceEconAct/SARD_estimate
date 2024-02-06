@@ -1,4 +1,3 @@
-
 createShape <- function(N=100, typeOfDist="VoronoiUniform", meanNorm=0.5, 
                                sdNorm=0.25, plot=FALSE){
     # Create the shape file from Voronoi sets of random generated points

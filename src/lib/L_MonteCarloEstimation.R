@@ -42,6 +42,31 @@ estimate_ARD_MC_LM <- function(df,shp,xA,xR,xD,MA,MR,MD){
     return(LM_est)
 }
 
+estimate_ARD_MC_IV <- function(df,shp,xA,xR,xD,MA,MR,MD){
+    
+    # lag regressors
+    MADelta = as.numeric(MA %*% matrix(df$delta))
+    MRDelta = as.numeric(MR %*% matrix(df$delta))
+    MDDelta = as.numeric(MD %*% matrix(df$delta))
+    
+    X = data.frame(xA=xA,xR=xR,xD=xD)
+    X = as.matrix(X)
+    
+    # instruments for IV
+    MA2X=as.matrix(MA %*% MA %*% X)
+    MR2X=as.matrix(MR %*% MR %*% X) 
+    MD2X=as.matrix(MD %*% MD %*% X)
+    
+    df = df %>% mutate(xA = xA, xR = xR, xD = xD,
+                       MADelta=MADelta, MRDelta=MRDelta,MDDelta=MDDelta,
+                       MA2X=MA2X[,],MR2X=MR2X[,],MD2X=MD2X[,])
+    
+    IV_est = ivreg(delta ~ 0 + xA + xR + xD + 
+                       + MADelta + MRDelta + MDDelta  | 
+                       xA + xR + xD + MA2X + MR2X + MD2X , data=df)
+    
+    return(IV_est)
+}
 
 estimate_ARD_MC_LL <- function(df,shp,xA,xR,xD,MA,MR,MD){
     

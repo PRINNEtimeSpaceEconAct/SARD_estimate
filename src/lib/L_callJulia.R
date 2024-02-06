@@ -79,7 +79,7 @@ initJulia <- function(){
 call_julia_LogLik_WN <- function(X,Y,MS,MA,MR,MD,initialCondition){
     
     # initJulia()
-    julia_command('include("lib/call_julia_LogLik.jl")')
+    julia_command('include("lib/call_julia_LogLik.jl");')
     julia_assign("X",X)
     julia_assign("Y",Y)
     julia_assign("MS",as.matrix(MS))
@@ -100,7 +100,7 @@ call_julia_LogLik_WN <- function(X,Y,MS,MA,MR,MD,initialCondition){
 call_julia_LogLik <- function(X,Y,MS,MA,MR,MD,Weps,initialCondition){
     
     # initJulia()
-    julia_command('include("lib/call_julia_LogLik.jl")')
+    julia_command('include("lib/call_julia_LogLik.jl");')
     julia_assign("X",X)
     julia_assign("Y",Y)
     julia_assign("MS",as.matrix(MS))
@@ -110,7 +110,7 @@ call_julia_LogLik <- function(X,Y,MS,MA,MR,MD,Weps,initialCondition){
     julia_assign("Weps",as.matrix(Weps))
     julia_assign("initialCondition",initialCondition)
     
-    outJulia = julia_eval('julia_LogLik_4Mat(X,Y,MS,MA,MR,MD,Weps,initialCondition)')
+    outJulia = julia_eval('julia_LogLik_4Mat(X,Y,MS,MA,MR,MD,Weps,initialCondition);')
     coef = outJulia[[1]]
     se_coef = outJulia[[2]]
     pvalue_coef = outJulia[[3]]
@@ -122,7 +122,7 @@ call_julia_LogLik <- function(X,Y,MS,MA,MR,MD,Weps,initialCondition){
 call_julia_LogLik_WN_3Mat <- function(X,Y,MA,MR,MD,initialCondition){
     
     # initJulia()
-    julia_command('include("lib/call_julia_LogLik.jl")')
+    julia_command('include("lib/call_julia_LogLik.jl");')
     julia_assign("X",X)
     julia_assign("Y",Y)
     julia_assign("MA",as.matrix(MA))
@@ -130,7 +130,7 @@ call_julia_LogLik_WN_3Mat <- function(X,Y,MA,MR,MD,initialCondition){
     julia_assign("MD",as.matrix(MD))
     julia_assign("initialCondition",initialCondition)
     
-    outJulia = julia_eval('julia_LogLik_WN_3Mat(X,Y,MA,MR,MD,initialCondition)')
+    outJulia = julia_eval('julia_LogLik_WN_3Mat(X,Y,MA,MR,MD,initialCondition);')
     coef = outJulia[[1]]
     se_coef = outJulia[[2]]
     pvalue_coef = outJulia[[3]]
@@ -142,7 +142,7 @@ call_julia_LogLik_WN_3Mat <- function(X,Y,MA,MR,MD,initialCondition){
 call_julia_LogLik_3Mat <- function(X,Y,MA,MR,MD,Weps,initialCondition){
     
     # initJulia()
-    julia_command('include("lib/call_julia_LogLik.jl")')
+    julia_command('include("lib/call_julia_LogLik.jl");')
     julia_assign("X",X)
     julia_assign("Y",Y)
     julia_assign("MA",as.matrix(MA))
@@ -151,7 +151,7 @@ call_julia_LogLik_3Mat <- function(X,Y,MA,MR,MD,Weps,initialCondition){
     julia_assign("Weps",as.matrix(Weps))
     julia_assign("initialCondition",initialCondition)
     
-    outJulia = julia_eval('julia_LogLik_3Mat(X,Y,MA,MR,MD,Weps,initialCondition)')
+    outJulia = julia_eval('julia_LogLik_3Mat(X,Y,MA,MR,MD,Weps,initialCondition);')
     coef = outJulia[[1]]
     se_coef = outJulia[[2]]
     pvalue_coef = outJulia[[3]]
@@ -163,13 +163,13 @@ call_julia_LogLik_3Mat <- function(X,Y,MA,MR,MD,Weps,initialCondition){
 call_julia_LogLik_WN_1Mat <- function(X,Y,W1,initialCondition){
 
     # initJulia()
-    julia_command('include("lib/call_julia_LogLik.jl")')
+    julia_command('include("lib/call_julia_LogLik.jl");')
     julia_assign("X",X)
     julia_assign("Y",Y)
     julia_assign("W1",as.matrix(W1))
     julia_assign("initialCondition",initialCondition)
     
-    outJulia = julia_eval('julia_LogLik_WN_1Mat(X,Y,W1,initialCondition)')
+    outJulia = julia_eval('julia_LogLik_WN_1Mat(X,Y,W1,initialCondition);')
     coef = outJulia[[1]]
     se_coef = outJulia[[2]]
     pvalue_coef = outJulia[[3]]
@@ -181,14 +181,14 @@ call_julia_LogLik_WN_1Mat <- function(X,Y,W1,initialCondition){
 call_julia_LogLik_1Mat <- function(X,Y,W1,Weps,initialCondition){
     
     # initJulia()
-    julia_command('include("lib/call_julia_LogLik.jl")')
+    julia_command('include("lib/call_julia_LogLik.jl");')
     julia_assign("X",X)
     julia_assign("Y",Y)
     julia_assign("W1",as.matrix(W1))
     julia_assign("Weps",as.matrix(Weps))
     julia_assign("initialCondition",initialCondition)
     
-    outJulia = julia_eval('julia_LogLik_1Mat(X,Y,W1,Weps,initialCondition)')
+    outJulia = julia_eval('julia_LogLik_1Mat(X,Y,W1,Weps,initialCondition);')
     coef = outJulia[[1]]
     se_coef = outJulia[[2]]
     pvalue_coef = outJulia[[3]]
@@ -201,7 +201,7 @@ call_julia_computeS <- function(NeS){
     
     # initJulia()
     julia_command
-    julia_command('include("lib/call_julia_montecarloAgents.jl")')
+    julia_command('include("lib/call_julia_montecarloAgents.jl");')
     julia_assign("NeS",NeS)
     
     outJulia = julia_eval('computeS(NeS,Sfun)')
@@ -215,7 +215,7 @@ call_julia_computeS <- function(NeS){
 call_julia_computeAgents <- function(Nm,Na,tau,SARDp){
     
     # initJulia()
-    julia_command('include("lib/call_julia_montecarloAgents.jl")')
+    julia_command('include("lib/call_julia_montecarloAgents.jl");')
 
     julia_assign("Nm",Nm)
     julia_assign("Na",Na)
@@ -229,7 +229,7 @@ call_julia_computeAgents <- function(Nm,Na,tau,SARDp){
     julia_assign("hR",SARDp$hR)
     julia_command("SARDp = (gammaS = gammaS,gammaA = gammaA,gammaR = gammaR,gammaD = gammaD,hA = hA,hR = hR)")
     
-    outJulia = julia_eval('computeAgents(Nm,Na,tau,SARDp)')
+    outJulia = julia_eval('computeAgents(Nm,Na,tau,SARDp);')
     agents0_MC = outJulia[[1]]
     agentsT_MC = outJulia[[2]]
     
@@ -251,7 +251,7 @@ call_julia_computePDE <- function(tau,SARDp){
     julia_assign("hR",SARDp$hR)
     julia_command("SARDp = (gammaS = gammaS,gammaA = gammaA,gammaR = gammaR,gammaD = gammaD,hA = hA,hR = hR)")
     
-    outJulia = julia_eval('computePDE(tau,SARDp)')
+    outJulia = julia_eval('computePDE(tau,SARDp);')
     X = outJulia[[1]]
     Y = outJulia[[2]]
     PDE0 = outJulia[[3]]

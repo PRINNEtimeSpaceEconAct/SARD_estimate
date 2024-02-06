@@ -182,7 +182,7 @@ function julia_LogLik_WN_3Mat(X,Y,MA,MR,MD,initialCondition)
     f_opt = OptimizationFunction(negLogLik_3Mat,Optimization.AutoFiniteDiff())
     prob = OptimizationProblem(f_opt,p_start,(Y,X,MA,MR,MD),
     lb=lb,ub=ub)
-    opt = Optimization.solve(prob,Optim.NelderMead(),show_trace=true)
+    opt = Optimization.solve(prob,Optim.NelderMead(),show_trace=false)
     optResult = opt.u
 
     XNormal = Normal(0,1)
@@ -257,7 +257,7 @@ function julia_LogLik_3Mat(X,Y,MA,MR,MD,Weps,initialCondition)
     f_opt = OptimizationFunction(negLogLik_3MatSpatErr,Optimization.AutoFiniteDiff())
     prob = OptimizationProblem(f_opt,p_start,(Y,X,MA,MR,MD,Weps),
     lb=lb,ub=ub)
-    opt = Optimization.solve(prob,Optim.NelderMead(),show_trace=true)
+    opt = Optimization.solve(prob,Optim.NelderMead(),show_trace=false)
     optResult = opt.u
 
     XNormal = Normal(0,1)
