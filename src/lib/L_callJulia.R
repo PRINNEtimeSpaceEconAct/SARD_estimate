@@ -57,7 +57,9 @@ initJulia <- function(){
     julia_install_package_if_needed("DifferentialEquations")
     julia_install_package_if_needed("ImageFiltering")
     julia_install_package_if_needed("Interpolations")
+    julia_install_package_if_needed("LoopVectorization")
     
+
     julia_library("LinearAlgebra")
     julia_library("Optimization")
     julia_library("OptimizationOptimJL")
@@ -71,6 +73,7 @@ initJulia <- function(){
     julia_library("DifferentialEquations")
     julia_library("ImageFiltering")
     julia_library("Interpolations")
+    julia_library("LoopVectorization")
     
     
     if (DEBUG == TRUE){ julia_command('println("Julia is working as intended")') }
