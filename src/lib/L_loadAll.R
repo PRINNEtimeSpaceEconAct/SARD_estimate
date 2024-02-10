@@ -16,6 +16,9 @@ suppressPackageStartupMessages(library(spatstat.geom))
 suppressPackageStartupMessages(library(buildmer))
 suppressPackageStartupMessages(library(JuliaCall))
 suppressPackageStartupMessages(library(cvCovEst))
+suppressPackageStartupMessages(library(classInt))
+suppressPackageStartupMessages(library(tmap))
+
 
 # sources ----
 source("lib/L_data.R")
@@ -26,6 +29,8 @@ source("lib/L_IV.R")
 source("lib/L_ML.R")
 source("lib/L_spatialModels.R")
 source("lib/L_GFDM.R")
+source("lib/L_maps.R")
+source("lib/L_forecast.R")
 source("lib/L_MonteCarloGeneration.R")
 source("lib/L_MonteCarloEstimation.R")
 
@@ -36,5 +41,5 @@ DEBUG = FALSE
 PARALLEL = FALSE
 NPROCS = 1
 
-# install.packages(c("MASS","dplyr","spdep","spatialreg","gamlr","sf","sfheaders","Matrix","snow","plm","AER","pracma","spatstat.geom","buildmer","JuliaCall"))
+# install.packages(c("MASS","dplyr","spdep","spatialreg","gamlr","sf","sfheaders","Matrix","snow","plm","AER","pracma","spatstat.geom","buildmer","JuliaCall","cvCovEst","classInt","tmap"))
 

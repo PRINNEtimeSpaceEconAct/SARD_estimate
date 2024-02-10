@@ -17,8 +17,8 @@ function julia_LogLik_4Mat(X,Y,MS,MA,MR,MD,Weps,initialCondition)
     MD = sparse(Matrix{Float64}(MD)); dropzeros!(MD)
     Weps = sparse(Matrix{Float64}(Weps)); dropzeros!(Weps)
 
-    lb = [-1,-1,-1,-1,-1]
-    ub = [1,1,1,1,1]
+    lb = [-1,-200,-200,-1,-1]
+    ub = [1,200,200,1,1]
     p_start = initialCondition
     
     # starting optimization
@@ -98,8 +98,8 @@ function julia_LogLik_WN_4Mat(X,Y,MS,MA,MR,MD,initialCondition)
     MR = sparse(Matrix{Float64}(MR)); dropzeros!(MR)
     MD = sparse(Matrix{Float64}(MD)); dropzeros!(MD)
 
-    lb = [-1,-1,-1,-1]
-    ub = [1,1,1,1]
+    lb = [-1,-200,-200,-1]
+    ub = [1,200,200,1]
     p_start = initialCondition
     
    

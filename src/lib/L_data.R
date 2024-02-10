@@ -14,8 +14,8 @@ get_data <- function(fileLocation) {
     
     allFiles = dir(fileLocation)
     
-    dfFile = allFiles[endsWith(allFiles,".RData")]
-    load(paste(fileLocation, dfFile, sep=""))   # df
+    # dfFile = allFiles[endsWith(allFiles,".RData")]
+    load(paste(fileLocation, "incomeMunicipalities_it.RData", sep=""))   # df
     
     shpFile = allFiles[endsWith(allFiles,".shp")]
     shp_sf=st_read(paste(fileLocation, shpFile, sep=""),

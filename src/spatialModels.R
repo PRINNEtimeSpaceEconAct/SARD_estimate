@@ -18,5 +18,8 @@ shp_data = rawData$shp_data
 # bestDURBIN_est = chose_hDurbin(data,h_range)
 hBest = 25
 DURBINEstimate = estimate_DURBIN_auto(data,hBest)
+save(DURBINEstimate,file="../outDURBINEstimate.RData")
 
 DURBINCorrelogram = correlogram(DURBINEstimate$DURBIN$residuals,shp_data,10)
+
+
