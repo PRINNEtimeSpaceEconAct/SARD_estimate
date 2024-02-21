@@ -312,7 +312,7 @@ end
 # end 
 
 # function densityInitialCondition(;Δx = 1e-2)
-#     Nx = Int(1/Δx)
+#     Nx = round(Int,1/Δx)
 #     x = LinRange(0,1-Δx,Nx)
 #     y = LinRange(0,1-Δx,Nx)
 #     X = repeat(x',Nx,1)
@@ -369,7 +369,8 @@ end
 
 
 function computeStep(tau,SARDp; Δx = 1e-2)
-    Nx = Int(1/Δx)
+    Nx = round(Int,1/Δx)
+    Δx = 1/Nx
     T_span = (0.0,tau)
     x = LinRange(0,1-Δx,Nx)
     y = LinRange(0,1-Δx,Nx)
@@ -394,7 +395,7 @@ function computeStep(tau,SARDp; Δx = 1e-2)
 end
 
 function computePDEInteractive(tau,SARDp; Δx = 1e-2)    
-    Nx = Int(1/Δx)
+    Nx = round(Int,1/Δx)
     T_span = (0.0,tau)
     x = LinRange(0,1-Δx,Nx)
     y = LinRange(0,1-Δx,Nx)
@@ -451,7 +452,7 @@ end
 
 
 function computePDE(tau,SARDp; Δx = 1e-2)    
-    Nx = Int(1/Δx)
+    Nx = round(Int,1/Δx)
     T_span = (0.0,tau)
     x = LinRange(0,1-Δx,Nx)
     y = LinRange(0,1-Δx,Nx)
@@ -472,28 +473,6 @@ function computePDE(tau,SARDp; Δx = 1e-2)
     sol = solve(prob,Tsit5(),progress=true,progress_steps = 1)
     return sol[end]
 end
-
-
-
-# function make_u0(Δx,Whu0)
-#     Nx = Int(1/Δx)
-#     x = 0.0:Δx:(1-Δx)
-#     y = 0.0:Δx:(1-Δx)
-    
-#     center1 = [0.25,0.75]
-#     center2 = [0.75,0.70]
-#     center3 = [0.75,0.30]
-
-    
-#     u0 = (0.5*[pdf(MvNormal(center1,0.05*I(2)),[xi,yi]) for xi in x, yi in y] .+ 
-#          .+ 0.25*[pdf(MvNormal(center2,0.01*I(2)),[xi,yi]) for xi in x, yi in y] .+
-#          .+ 0.25*[pdf(MvNormal(center3,0.01*I(2)),[xi,yi]) for xi in x, yi in y])
-
-#     u0 .= imfilter(u0,Whu0,Pad(:circular,Nx,Nx))*Δx^2
-#     u0 .= u0/sum(u0*Δx^2)
-
-#     return u0
-# end
 
 
 function df!(du,u,p,t)
@@ -614,7 +593,7 @@ end
 
 
 function make_u0(Δx,Whu0)
-    Nx = Int(1/Δx)
+    Nx = round(Int,1/Δx)
     x = 0.0:Δx:(1-Δx)
     y = 0.0:Δx:(1-Δx)
     
@@ -635,8 +614,8 @@ function make_u0(Δx,Whu0)
 end
 
 
-tau = 0.3
-SARDp = (gammaS = 0.0, gammaA = -0.01, gammaR = 0.02, gammaD = 0.02, hA = 0.15, hR = 0.4)
+tau = 1.0
+SARDp = (gammaS = 0.0, gammaA = -0.00175, gammaR = 0.0025, gammaD = 0.00525, hA = 0.15, hR = 0.4)
 sol,xS,xA,xR,xD  = computePDEInteractive(tau,SARDp);
 yT,xS,xA,xR,xD = computeStep(tau,SARDp);
 plotPDE(sol)

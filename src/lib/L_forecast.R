@@ -4,7 +4,7 @@ forcastSARD <- function(NPeriods,SARDCoeff,hA,hR,df,tau=11){
     # correction = 1/(1-tau*rhoPhi/2)
     
     
-    phiTrue = log(sum(df$yT)/sum(df$y0))/tau   
+    phiTrue = log(sum(df$yT*df$km2)/sum(df$y0*df$km2))/tau 
     correction = SARDCoeff[2]/phiTrue
     
     alpha = SARDCoeff[1]/correction

@@ -66,6 +66,40 @@ continuous2shp <- function(X, Y, S, shp_sf){
     return(p_ag1$s)
 }
 
+continuous2shpInterp <- function(X, Y, S, shp_sf){
+    # aggregatre levels of S into polygons provided by the shapefile shp_sf
+    
+    Np = nrow(shp_sf)
+    Nx = dim(X)[1]
+    Xstack = c(X)
+    Ystack = c(Y)
+    x = sort(unique(Xstack))
+    y = sort(unique(Ystack))
+    x = c(x,1.0)
+    y = c(y,1.0)
+    Saug = matrix(data=NA,Nx+1,Nx+1)
+    Saug[1:Nx,1:Nx] = S
+    Saug[Nx+1,1:Nx] = S[1,]
+    Saug[1:Nx,Nx+1] = S[,1]
+    Saug[Nx+1,Nx+1] = S[1,1]
+    fInterp <- function(M){
+        xp = M[,1]
+        yp = M[,2]
+        zp = interp2(x,y,Saug,xp,yp,method="linear")
+        return(zp)
+    }
+    
+    aggr = array(data=NA,dim=Np)
+    for (i in 1:Np){
+        poly = shp_sf$geom[[i]]
+        aggr[i] = polyCub(poly,fInterp,method="SV")
+    }
+
+    return(aggr)
+}
+
+
+
 gaussianMixBoundary <- function(N,NGaussiansPside=10){
     sigma = 0.05
     NGPS = NGaussiansPside
@@ -160,9 +194,12 @@ createDataframePDE <- function(PDE0, PDET, Xpde, Ypde, shp_sf, tau, Xs, Ys, S){
     #km2 of each cell
     km2 <- st_area(shp_sf)/sum(st_area(shp_sf))
     
-    y0 = continuous2shp(Xpde, Ypde, PDE0, shp_sf)
-    yT = continuous2shp(Xpde, Ypde, PDET, shp_sf)
-
+    # y0 = continuous2shp(Xpde, Ypde, PDE0, shp_sf)
+    # yT = continuous2shp(Xpde, Ypde, PDET, shp_sf)
+    
+    y0 = continuous2shpInterp(Xpde, Ypde, PDE0, shp_sf)/km2
+    yT = continuous2shpInterp(Xpde, Ypde, PDET, shp_sf)/km2
+    
     #codes for cell
     geo = seq(1:length(y0))
     

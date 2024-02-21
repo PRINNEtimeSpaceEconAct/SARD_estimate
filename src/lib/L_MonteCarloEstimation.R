@@ -27,8 +27,7 @@ createModelVariables <- function(SARDp){
     return(listN(model,variables))
 }
 
-
-estimate_ARD_MC_LM <- function(df,shp,xA,xR,xD,MA,MR,MD){
+estimate_ARD_MC_LM_NAIVE <- function(df,shp,xA,xR,xD,MA,MR,MD){
     
     # lag regressors
     MADelta = as.numeric(MA %*% matrix(df$delta))
@@ -38,7 +37,22 @@ estimate_ARD_MC_LM <- function(df,shp,xA,xR,xD,MA,MR,MD){
     df = df %>% mutate(xA = xA, xR = xR, xD = xD,
                        MADelta=MADelta, MRDelta=MRDelta,MDDelta=MDDelta)
     
-    LM_est = lm(delta ~ 0 + xA + MADelta + xR + MRDelta + xD + MDDelta, data = df)
+    LM_est = lm(delta ~ 0 + xA  + xR  + xD, data = df)
+    return(LM_est)
+}
+
+
+estimate_ARD_MC_LM <- function(df,shp,xA,xR,xD,MA,MR,MD,weights=rep(1,nrow(df))){
+    
+    # lag regressors
+    MADelta = as.numeric(MA %*% matrix(df$delta))
+    MRDelta = as.numeric(MR %*% matrix(df$delta))
+    MDDelta = as.numeric(MD %*% matrix(df$delta))
+    
+    df = df %>% mutate(xA = xA, xR = xR, xD = xD,
+                       MADelta=MADelta, MRDelta=MRDelta,MDDelta=MDDelta)
+    
+    LM_est = lm(delta ~ 0 + xA + MADelta + xR + MRDelta + xD + MDDelta, data = df, weights = weights)
     return(LM_est)
 }
 

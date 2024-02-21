@@ -6,7 +6,7 @@ library(plotly)
 DEBUG=TRUE
 
 # coordinates grid
-N = 50
+N = 100
 x = seq(0,1,length.out=N)
 y = seq(0,1,length.out=N)
 coord = as.matrix(expand.grid(x,y))

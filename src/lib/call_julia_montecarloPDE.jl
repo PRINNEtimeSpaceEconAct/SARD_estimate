@@ -5,7 +5,8 @@
 # using Distributions
 
 function computePDE(tau,SARDp; Δx = 1e-2)    
-    Nx = Int(1/Δx)
+    Nx = round(Int,1/Δx)
+    Δx = 1/Nx
     T_span = (0.0,tau)
     x = LinRange(0,1-Δx,Nx)
     y = LinRange(0,1-Δx,Nx)
@@ -35,7 +36,7 @@ end
 # # Np=256
 # # tau= 0.05
 # # SARDp = list(gammaS = 0.0, gammaA = -0.035, gammaR = 0.05, gammaD = 0.105, hA = 0.15, hR = 0.4)
-#     Nx = Int(1/Δx)
+#     Nx = round(Int,1/Δx)
 #     x = 0.0:Δx:(1-Δx)
 #     y = 0.0:Δx:(1-Δx)
     
@@ -56,7 +57,7 @@ end
 # end
 
 function make_u0(Δx,Whu0)
-    Nx = Int(1/Δx)
+    Nx = round(Int,1/Δx)
     x = 0.0:Δx:(1-Δx)
     y = 0.0:Δx:(1-Δx)
     

@@ -18,6 +18,8 @@ suppressPackageStartupMessages(library(JuliaCall))
 suppressPackageStartupMessages(library(cvCovEst))
 suppressPackageStartupMessages(library(classInt))
 suppressPackageStartupMessages(library(tmap))
+suppressPackageStartupMessages(library(polyCub))
+suppressPackageStartupMessages(library(RColorBrewer))
 
 
 # sources ----
