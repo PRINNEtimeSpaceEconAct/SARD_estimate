@@ -10,23 +10,14 @@ Na=100
 Nm = 1000
 tau= 1.0
 NeS = 100
-# SARDp = list(gammaS = 0.0, gammaA = -0.00175, gammaR = 0.0025, gammaD = 0.00525, hA = 0.15, hR = 0.4)
 SARDp = list(gammaS = 0.0, gammaA = -0.00175, gammaR = 0.0025, gammaD = 0.00525, hA = 0.15, hR = 0.4)
 
 # PDE once ----
-# PDEAll = call_julia_computePDE(tau,SARDp)
-# save(PDEAll,file="../datasets_montecarlo/PDE.RData")
+PDEAll = call_julia_computePDE(tau,SARDp)
+save(PDEAll,file="../datasets_montecarlo/PDE.RData")
 
- 
-# Agents for error ----
-NSigma = 100
-
-# Na = 50000
-# AgentsAll = call_julia_computeAgents(NSigma,Na,tau,SARDp)
-# save(AgentsAll,file="../datasets_montecarlo/AgentsAll50k.RData")
-
-# Np = 256 ----
-Np = 576
+# Np = 144 ----
+Np = 144
 
 ## create PDE shape ----
 shpMC = createShape(Np, typeOfDist = "Uniform")
@@ -44,10 +35,11 @@ S = SComputed$S
 data_shp = createDataframePDE(PDE0, PDET, Xpde, Ypde, shpMC, tau, Xs, Ys, S)
 data = data_shp$data
 shp = data_shp$shp_sf
-save(data,shp,file="../datasets_montecarlo/PDEdatashp256.RData")
+save(data,shp,file="../datasets_montecarlo/PDEdatashp144.RData")
+
 
 ## create regressors ----
-load(file="../datasets_montecarlo/PDEdatashp256.RData")
+load(file="../datasets_montecarlo/PDEdatashp144.RData")
 
 MsDeriv = GFDM(data,torus=TRUE)
 D = compute_D(data,longlat=FALSE,torus=TRUE)
@@ -59,187 +51,82 @@ xD = compute_xD(data,MsDeriv)
 MA = compute_MARLag(data,MsDeriv,WhA)
 MR = compute_MARLag(data,MsDeriv,WhR)
 MD = compute_MDLag(MsDeriv)
-save(data,shp,xA,xR,xD,MA,MR,MD,file="../datasets_montecarlo/DataShpRegressors256.RData")
+shp = cbind(shp,xA,xR,xD)
+plot(shp[c("y0","yT","delta","xA","xR","xD")])
+save(data,shp,xA,xR,xD,MA,MR,MD,file="../datasets_montecarlo/DataShpRegressors144.RData")
+
 
 ## estimate PDE LL ----
-load("../datasets_montecarlo/DataShpRegressors256.RData")
-estimatePDE256_LM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
-estimatePDE256_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
-estimatePDE256_IV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
-# estimatePDE256_LL = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
-# save(estimatePDE256_LM,estimatePDE256_IV,estimatePDE256_LL,file="../datasets_montecarlo/resultPDE256.RData")
-
-LM_est = estimatePDE256_LM; s = summary(LM_est)
-print(paste("xA in ",round(abs(SARDp$gammaA-LM_est$coefficients["xA"])/s$coefficients["xA","Std. Error"],digits=2)," std. error, and ",round(abs(SARDp$gammaA-LM_est$coefficients["xA"])/abs(SARDp$gammaA),digits=2), " relative error.", sep=""))
-print(paste("xR in ",round(abs(SARDp$gammaR-LM_est$coefficients["xR"])/s$coefficients["xR","Std. Error"],digits=2)," std. error, and ",round(abs(SARDp$gammaR-LM_est$coefficients["xR"])/abs(SARDp$gammaR),digits=2), " relative error.", sep=""))
-print(paste("xD in ",round(abs(SARDp$gammaD-LM_est$coefficients["xD"])/s$coefficients["xD","Std. Error"],digits=2)," std. error, and ",round(abs(SARDp$gammaD-LM_est$coefficients["xD"])/abs(SARDp$gammaD),digits=2), " relative error.", sep=""))
-
-residualsPDE = LM_est$residuals
-sd(residualsPDE)    
-
-## read and aggregate agents  ----
-load("../datasets_montecarlo/DataShpRegressors256.RData")
-### 50k ----
-load("../datasets_montecarlo/AgentsAll50k.RData")
-agents0_MC = AgentsAll$agents0_MC
-agentsT_MC = AgentsAll$agentsT_MC
-km2 = shp$km2
-
-y0m50k256 = matrix(data=NA,nrow=NSigma,ncol=256)
-yTm50k256 = matrix(data=NA,nrow=NSigma,ncol=256)
-error50k256 = matrix(data=NA,nrow=NSigma,ncol=256)
-error50k256_y0 = matrix(data=NA,nrow=NSigma,ncol=256)
-error50k256_yT = matrix(data=NA,nrow=NSigma,ncol=256)
-deltaAgents = matrix(data=NA,nrow=NSigma,ncol=256)
-y0Agents = matrix(data=NA,nrow=NSigma,ncol=256)
-
-pb = txtProgressBar(min = 1, max = NSigma, initial = 1,style=3) 
-for (m in 1:NSigma){
-    agents0m = agents0_MC[m,,]
-    agentsTm = agentsT_MC[m,,]
-    
-    agents0Sf = sf_point(agents0m)
-    st_crs(agents0Sf) ="WGS84"
-    aggrAgents0 = lengths(st_intersects(shp,agents0Sf))
-    y0m = aggrAgents0/(km2*sum(aggrAgents0))
-    y0m50k256[m,] = y0m
-    
-    agentsTSf = sf_point(agentsTm)
-    st_crs(agentsTSf) ="WGS84"
-    aggrAgentsT = lengths(st_intersects(shp,agentsTSf))
-    yTm = aggrAgentsT/(km2*sum(aggrAgentsT))
-    yTm50k256[m,] = yTm
-    
-    # deltam = yTm-y0m
-    deltam = (yTm-y0m)/tau
-    deltaAgents[m,] = deltam
-    errorm = shp$delta-deltam
-    error50k256[m,] = errorm
-    error50k256_y0[m,] = shp$y0-y0m
-    error50k256_yT[m,] = shp$yT-yTm
-    
-    setTxtProgressBar(pb,m)
-}
-close(pb)
-
-save(error50k256,error50k256_y0,error50k256_yT,y0m50k256, yTm50k256, file="../datasets_montecarlo/error50k256.RData")
-load(file="../datasets_montecarlo/error50k256.RData")
-
-Sigma50k256 = cvCovEst(error50k256)
-# Sigma50k256 = cvCovEst(dat = error50k256, estimators = c(
-#     linearShrinkEst, thresholdingEst, bandingEst, adaptiveLassoEst,
-#     sampleCovEst, taperingEst), estimator_params = list(
-#         linearShrinkEst = list(alpha = seq(0.25, 0.75, 0.05)),
-#         thresholdingEst = list(gamma = seq(0.25, 0.75, 0.05)),
-#         bandingEst = list(k = seq(2L, 10L, 2L)),
-#         adaptiveLassoEst = list(lambda = c(0.1, 0.25, 0.5, 0.75, 1), n = seq(1, 5)),
-#         taperingEst = list(k = seq(2L, 10L, 2L))), cv_scheme = "v_fold",  v_folds = 5)
-# 
-# pp=summary(Sigma50k256, dat_orig=error50k256)
-
-save(Sigma50k256,file="../datasets_montecarlo/Sigma50k256.RData")
-load(file="../datasets_montecarlo/Sigma50k256.RData")
-
-# SigmaHat_m = array(data=NA,dim = c(NSigma, 256, 256))
-# for (m in 1:NSigma){
-#     SigmaHat_m[m,,] = crossprod(t(error50k256[m,]))
-# }
-# SigmaHat256 = apply(SigmaHat_m, 2:3, mean)
-
-# error50k256m = apply(error50k256, 2, mean)
-# SigmaHat256 = crossprod(t(error50k256m))
+load("../datasets_montecarlo/DataShpRegressors1156.RData")
+estimatePDE1156_LM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE1156_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE1156_IV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE1156_LL = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
+save(estimatePDE1156_LM_NAIVE,estimatePDE1156_LM,estimatePDE1156_IV,estimatePDE1156_LL,file="../datasets_montecarlo/resultPDE1156.RData")
 
 
-## montecarlo ----
-load("../datasets_montecarlo/DataShpRegressors256.RData")
+load(file="../datasets_montecarlo/resultPDE1156.RData")
 
-### montecarlo 50k ----
-load(file="../datasets_montecarlo/Sigma50k256.RData")
-coefMC_256_50k_LM_NAIVE = matrix(data=NA,nrow=Nm,ncol=3)
-coefMC_256_50k_LM = matrix(data=NA,nrow=Nm,ncol=3)
-coefMC_256_50k_IV = matrix(data=NA,nrow=Nm,ncol=3)
-coefMC_256_50k_LL = matrix(data=NA,nrow=Nm,ncol=3)
-resMC_256_50k_LM = matrix(data=NA,nrow=Nm,ncol=256)
+LM_est = estimatePDE1156_LM; s = summary(LM_est)
+print(paste("xA in ",round((SARDp$gammaA-LM_est$coefficients["xA"])/s$coefficients["xA","Std. Error"],digits=2)," std. error, and ",round(abs(SARDp$gammaA-LM_est$coefficients["xA"])/abs(SARDp$gammaA),digits=2), " relative error.", sep=""))
+print(paste("xR in ",round((SARDp$gammaR-LM_est$coefficients["xR"])/s$coefficients["xR","Std. Error"],digits=2)," std. error, and ",round(abs(SARDp$gammaR-LM_est$coefficients["xR"])/abs(SARDp$gammaR),digits=2), " relative error.", sep=""))
+print(paste("xD in ",round((SARDp$gammaD-LM_est$coefficients["xD"])/s$coefficients["xD","Std. Error"],digits=2)," std. error, and ",round(abs(SARDp$gammaD-LM_est$coefficients["xD"])/abs(SARDp$gammaD),digits=2), " relative error.", sep=""))
 
-#### Extract from multivariate normal with give covariance matrix ----
-errorMc = mvrnorm(Nm,mu=rep(0,256),Sigma=diag(256))
-# errorMc = mvrnorm(Nm,mu=rep(0,256),Sigma=Sigma50k256$estimate)
-# errorMc = mvrnorm(Nm,mu=rep(0,256),Sigma=SigmaHat256)
+print(paste("xA in ",round((SARDp$gammaA- estimatePDE1156_LL$outARD_3MatEstimate$coef[1])/abs(SARDp$gammaA),digits=2), " relative error.", sep=""))
+print(paste("xR in ",round((SARDp$gammaR- estimatePDE1156_LL$outARD_3MatEstimate$coef[2])/abs(SARDp$gammaR),digits=2), " relative error.", sep=""))
+print(paste("xD in ",round((SARDp$gammaD- estimatePDE1156_LL$outARD_3MatEstimate$coef[3])/abs(SARDp$gammaD),digits=2), " relative error.", sep=""))
 
-# # #### Extract directly from simulated errors for each cell ----
-# errorMc = matrix(data=NA,nrow=Nm,ncol=Np)
-# for (i in 1:Np){
-#     errorMc[,i] = sample(error50k256[,i], size=Nm, replace = T)
-# }
 
-pb = txtProgressBar(min = 1, max = Nm, initial = 1,style=3) 
-for (m in 1:Nm){
-    shpMcm = mutate(shp,delta = delta + errorMc[m,])
-    dataMcm = mutate(data,delta = delta + errorMc[m,])
-    
-    estimatePDE256LMNAIVEm = estimate_ARD_MC_LM_NAIVE(dataMcm,shpMcm,xA,xR,xD,MA,MR,MD)
-    estimatePDE256LMm = estimate_ARD_MC_LM(dataMcm,shpMcm,xA,xR,xD,MA,MR,MD)
-    estimatePDE256IVm = estimate_ARD_MC_IV(dataMcm,shpMcm,xA,xR,xD,MA,MR,MD)
-    # estimatePDE256LLm = estimate_ARD_MC_LL(dataMcm,shpMcm,xA,xR,xD,MA,MR,MD)
-
-    coefMC_256_50k_LM_NAIVE[m,] = coef(estimatePDE256LMNAIVEm)[c(1:3)]
-    coefMC_256_50k_LM[m,] = coef(estimatePDE256LMm)[c(1,3,5)]
-    coefMC_256_50k_IV[m,] = coef(estimatePDE256IVm)[c(1,2,3)]
-    # coefMC_256_50k_LL[m,] = estimatePDE256LLm$outARD_3MatEstimate$coef[c(1,2,3)]
-    
-    resMC_256_50k_LM[m,] = resid(estimatePDE256LMm)
-    
-    setTxtProgressBar(pb,m)
-}
-close(pb)
-save(coefMC_256_50k_LM,coefMC_256_50k_IV,coefMC_256_50k_LL,file="../datasets_montecarlo/resultMC256.RData")
 
 ## plot shp ----
-load("../datasets_montecarlo/DataShpRegressors256.RData")
+load("../datasets_montecarlo/DataShpRegressors144.RData")
 
 dev.new()
 plot(shp["y0"])
-dev.copy2pdf(file="../datasets_montecarlo/y0256.pdf")
+dev.copy2pdf(file="../datasets_montecarlo/y0144.pdf")
 
 dev.new()
 plot(shp["yT"])
-dev.copy2pdf(file="../datasets_montecarlo/yT256.pdf")
+dev.copy2pdf(file="../datasets_montecarlo/yT144.pdf")
 
 dev.new()
 plot(shp["delta"])
-dev.copy2pdf(file="../datasets_montecarlo/delta256.pdf")
+dev.copy2pdf(file="../datasets_montecarlo/delta144.pdf")
 
 dev.new()
 plot(cbind(shp,xA)["xA"])
-dev.copy2pdf(file="../datasets_montecarlo/xA256.pdf")
+dev.copy2pdf(file="../datasets_montecarlo/xA144.pdf")
 
 dev.new()
 plot(cbind(shp,xR)["xR"])
-dev.copy2pdf(file="../datasets_montecarlo/xR256.pdf")
+dev.copy2pdf(file="../datasets_montecarlo/xR144.pdf")
 
 dev.new()
 plot(cbind(shp,xD)["xD"])
-dev.copy2pdf(file="../datasets_montecarlo/xD256.pdf")
+dev.copy2pdf(file="../datasets_montecarlo/xD144.pdf")
 
 ## plot contour PDE ----
 dev.new()
 filled.contour(t(PDE0), color.palette=plasma)
-dev.copy2pdf(file="../datasets_montecarlo/y0256_continuosSpace.pdf")
+dev.copy2pdf(file="../datasets_montecarlo/y01156_continuosSpace.pdf")
 dev.new()
 filled.contour(t(PDET), color.palette=plasma)
-dev.copy2pdf(file="../datasets_montecarlo/yT256_continuosSpace.pdf")
+dev.copy2pdf(file="../datasets_montecarlo/yT1156_continuosSpace.pdf")
 dev.new()
 filled.contour(t(PDET)-t(PDE0), color.palette=plasma)
 dev.copy2pdf(file="../datasets_montecarlo/delta_continuosSpace.pdf")
 
-
-
 # montecarlo PDE different Np ----
-lengthAll = seq(from=10,to=50,by=1)
+load(file="../datasets_montecarlo/PDE.RData")
+
+lengthAll = seq(from=12,to=50,by=1)
 NpAll = lengthAll^2
-coefSARDNpAll = matrix(NA,nrow=length(NpAll),ncol=3)
-colnames(coefSARDNpAll) = c("gammaA","gammaR","gammaD")
-rownames(coefSARDNpAll) = NpAll
+Nm = 1000
+coefMNpLM = array(data=NA,dim=c(length(NpAll),Nm,3))
+coefMNpLMNaive = array(data=NA,dim=c(length(NpAll),Nm,3))
+coefMNpIV = array(data=NA,dim=c(length(NpAll),Nm,3))
+estimateNpLL = list()
+coefNpLL = matrix(data=NA,nrow=length(NpAll),ncol=3)
 for (i in 1:length(NpAll)){
     Np = NpAll[i]
     print(i)
@@ -272,75 +159,214 @@ for (i in 1:length(NpAll)){
     MR = compute_MARLag(data,MsDeriv,WhR)
     MD = compute_MDLag(MsDeriv)
     
-    ## estimate PDE LM ----
-    estimatePDE_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
+    MADelta = as.numeric(MA %*% matrix(data$delta))
+    MRDelta = as.numeric(MR %*% matrix(data$delta))
+    MDDelta = as.numeric(MD %*% matrix(data$delta))
     
-    coefSARDNpAll[i,] = coef(estimatePDE_LM)[c(1,3,5)]
+    X = data.frame(xA=xA,xR=xR,xD=xD)
+    X = as.matrix(X)
+    
+    # instruments for IV
+    MA2X=as.matrix(MA %*% MA %*% X)
+    MR2X=as.matrix(MR %*% MR %*% X) 
+    MD2X=as.matrix(MD %*% MD %*% X)
+    
+    estimateNpLL[[i]] = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
+    coefNpLL[i,] = estimateNpLL[[i]]$outARD_3MatEstimate$coef[c(1,2,3)]
+    for (m in 1:Nm){
+        # print(m)
+        
+        iBoot = sample(1:nrow(data),replace=T)
+        datam = data[iBoot,]
+        xAm = xA[iBoot]
+        xRm = xR[iBoot]
+        xDm = xD[iBoot]
+        MADeltam = MADelta[iBoot]
+        MRDeltam = MRDelta[iBoot]
+        MDDeltam = MDDelta[iBoot]
+        MA2Xm=MA2X[iBoot,]
+        MR2Xm=MR2X[iBoot,]
+        MD2Xm=MD2X[iBoot,]
+        
+        estimatePDE_LMm = estimate_ARD_MC_LMBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
+        coefMNpLM[i,m,] = estimatePDE_LMm$coefficients[c(1,3,5)]
+        
+        estimatePDE_LMNaivem = estimate_ARD_MC_LM_NAIVEBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
+        coefMNpLMNaive[i,m,] = estimatePDE_LMNaivem$coefficients[c(1,2,3)]
+
+        estimatePDE_IVm = estimate_ARD_MC_IVBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam,MA2Xm,MR2Xm,MD2Xm)
+        coefMNpIV[i,m,] = coef(estimatePDE_IVm)[c(1,2,3)]
+        
+    }
 }
-save(coefSARDNpAll,file="../datasets_montecarlo/montecarloPDENpGrid.RData")
+save(NpAll,coefMNpLM,coefMNpLMNaive,coefMNpIV,coefNpLL,estimateNpLL,file="../datasets_montecarlo/montecarloPDENpGrid.RData")
 
+## with SE ----
 load(file="../datasets_montecarlo/montecarloPDENpGrid.RData")
-gammaA = coefSARDNpAll[,"gammaA"]
-gammaR = coefSARDNpAll[,"gammaR"]
-gammaD = coefSARDNpAll[,"gammaD"]
-
-errRelgammaA = (SARDp$gammaA-gammaA)/SARDp$gammaA
-errRelgammaR = (SARDp$gammaR-gammaR)/SARDp$gammaR
-errRelgammaD = (SARDp$gammaD-gammaD)/SARDp$gammaD
+library(latex2exp)
 Np = NpAll
+coefRep = matrix(rep(c(SARDp$gammaA,SARDp$gammaR,SARDp$gammaD),Nm),nrow=Nm,byrow = T)
+coefNpLM = matrix(data=NA,nrow=length(Np),ncol=3)
+lowerNpLM = matrix(data=NA,nrow=length(Np),ncol=3)
+upperNpLM = matrix(data=NA,nrow=length(Np),ncol=3)
+seNpLM = matrix(data=NA,nrow=length(Np),ncol=3)
+coefNpLMNaive = matrix(data=NA,nrow=length(Np),ncol=3)
+lowerNpLMNaive = matrix(data=NA,nrow=length(Np),ncol=3)
+upperNpLMNaive = matrix(data=NA,nrow=length(Np),ncol=3)
+seNpLMNaive = matrix(data=NA,nrow=length(Np),ncol=3)
+coefNpIV = matrix(data=NA,nrow=length(Np),ncol=3)
+lowerNpIV = matrix(data=NA,nrow=length(Np),ncol=3)
+upperNpIV = matrix(data=NA,nrow=length(Np),ncol=3)
+seNpIV = matrix(data=NA,nrow=length(Np),ncol=3)
+coefNpLLRel = matrix(data=NA,nrow=length(Np),ncol=3)
+coefNpLLSeRel = matrix(data=NA,nrow=length(Np),ncol=3)
+    
+for (i in 1:length(Np)){
+    coefMLM = coefMNpLM[i,,]
+    coefMLMNaive = coefMNpLMNaive[i,,]    
+    coefMIV = coefMNpIV[i,,]   
+    coefLL = coefNpLL[i,]
+    SELL = estimateNpLL[[i]]$outARD_3MatEstimate$se_coef[c(1,2,3)]
+    
+    errRelLM = (coefRep-coefMLM)/coefRep
+    errRelLMNaive = (coefRep-coefMLMNaive)/coefRep
+    errRelIV = (coefRep-coefMIV)/coefRep
+    coefNpLLRel[i,] =  (c(SARDp$gammaA,SARDp$gammaR,SARDp$gammaD)-coefLL)/c(SARDp$gammaA,SARDp$gammaR,SARDp$gammaD)
+    coefNpLLSeRel[i,] = SELL/(abs(c(SARDp$gammaA,SARDp$gammaR,SARDp$gammaD)))
+    
+    coefNpLM[i,] = apply(errRelLM,MARGIN=2,FUN=function(x) mean(x))
+    lowerNpLM[i,] = apply(errRelLM,MARGIN=2,FUN=function(x) quantile(x,0.05))
+    upperNpLM[i,] = apply(errRelLM,MARGIN=2,FUN=function(x) quantile(x,0.95))
+    seNpLM[i,] = apply(coefMLM,MARGIN=2,FUN=function(x) sd(x))
+    
+    coefNpLMNaive[i,] = apply(errRelLMNaive,MARGIN=2,FUN=function(x) mean(x))
+    lowerNpLMNaive[i,] = apply(errRelLMNaive,MARGIN=2,FUN=function(x) quantile(x,0.05))
+    upperNpLMNaive[i,] = apply(errRelLMNaive,MARGIN=2,FUN=function(x) quantile(x,0.95))
+    seNpLMNaive[i,] = apply(coefMLMNaive,MARGIN=2,FUN=function(x) sd(x))
+    
+    coefNpIV[i,] = apply(errRelIV,MARGIN=2,FUN=function(x) mean(x))
+    lowerNpIV[i,] = apply(errRelIV,MARGIN=2,FUN=function(x) quantile(x,0.05))
+    upperNpIV[i,] = apply(errRelIV,MARGIN=2,FUN=function(x) quantile(x,0.95))
+    seNpIV[i,] = apply(coefMIV,MARGIN=2,FUN=function(x) sd(x))
+}
+
+### plot ----
+
+coefNpLM = coefNpLM[1:(length(Np)-1),]
+lowerNpLM = lowerNpLM[1:(length(Np)-1),]
+upperNpLM = upperNpLM[1:(length(Np)-1),]
+coefNpLMNaive = coefNpLMNaive[1:(length(Np)-1),]
+lowerNpLMNaive = lowerNpLMNaive[1:(length(Np)-1),]
+upperNpLMNaive = upperNpLMNaive[1:(length(Np)-1),]
+coefNpIV = coefNpIV[1:(length(Np)-1),]
+lowerNpIV = lowerNpIV[1:(length(Np)-1),]
+upperNpIV = upperNpIV[1:(length(Np)-1),]
+coefNpLLRel = coefNpLLRel[1:(length(Np)-1),]
+coefNpLLSeRel = coefNpLLSeRel[1:(length(Np)-1),]
+Np = Np[1:(length(Np)-1)]
 
 dev.new()
-plot(Np,errRelgammaA,type="b",ylab = "", xaxt = "n")
+plot(Np,coefNpLM[,1],type="l",ylab = TeX("Relative error $\\gamma_A$"), xaxt = "n",ylim=range(coefNpLM[,1],lowerNpLM[,1],upperNpLM[,1],coefNpLMNaive[,1],lowerNpLMNaive[,1],upperNpLMNaive[,1],coefNpIV[,1],lowerNpIV[,1],upperNpIV[,1],coefNpLLRel[,1]))
+lines(Np,lowerNpLM[,1],lty="dashed",col="black",xaxt="n")
+lines(Np,upperNpLM[,1],lty="dashed",col="black",xaxt="n")
+lines(Np,coefNpLMNaive[,1],col="red",xaxt="n")
+lines(Np,upperNpLMNaive[,1],lty="dashed",col="red",xaxt="n")
+lines(Np,lowerNpLMNaive[,1],lty="dashed",col="red",xaxt="n")
+lines(Np,coefNpIV[,1],col="blue",xaxt="n")
+lines(Np,upperNpIV[,1],lty="dashed",col="blue",xaxt="n")
+lines(Np,lowerNpIV[,1],lty="dashed",col="blue",xaxt="n")
+lines(Np,coefNpLLRel[,1],col="purple",xaxt="n")
+lines(Np,coefNpLLRel[,1]+qnorm(0.95)*coefNpLLSeRel[,1],lty="dashed",col="purple",xaxt="n")
+lines(Np,coefNpLLRel[,1]-qnorm(0.95)*coefNpLLSeRel[,1],lty="dashed",col="purple",xaxt="n")
 axis(1, at = Np)
-lines(Np,errRelgammaR,type="b",col="blue", xaxt = "n")
-lines(Np,errRelgammaD,type="b",col="red", xaxt = "n")
 grid()
 abline(h=0)
-legend("topright",legend=c("relative error gammaA","relative error gammaR","relative error gammaD"),col=c("black","blue","red"),lty=1,cex=1.0)
-dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRel.pdf")
+# legend(locator(1),legend=c("OLS","OLS NAIVE","Instrumental Variable","Maximum Likelihood"),col=c("black","red","blue","purple"),lty=1,cex=1.0)
+legend("topleft",legend=c("OLS","OLS NAIVE","Instrumental Variable","Maximum Likelihood"),col=c("black","red","blue","purple"),lty=1,cex=1.0)
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRelGammaA.pdf")
 
+dev.new()
+plot(Np,coefNpLM[,2],type="l",ylab = TeX("Relative error $\\gamma_R$"), xaxt = "n",ylim=range(coefNpLM[,2],lowerNpLM[,2],upperNpLM[,2],coefNpLMNaive[,2],lowerNpLMNaive[,2],upperNpLMNaive[,2],coefNpIV[,2],lowerNpIV[,2],upperNpIV[,2],coefNpLLRel[,2]))
+lines(Np,lowerNpLM[,2],lty="dashed",col="black",xaxt="n")
+lines(Np,upperNpLM[,2],lty="dashed",col="black",xaxt="n")
+lines(Np,coefNpLMNaive[,2],col="red",xaxt="n")
+lines(Np,lowerNpLMNaive[,2],lty="dashed",col="red",xaxt="n")
+lines(Np,upperNpLMNaive[,2],lty="dashed",col="red",xaxt="n")
+lines(Np,coefNpIV[,2],col="blue",xaxt="n")
+lines(Np,upperNpIV[,2],lty="dashed",col="blue",xaxt="n")
+lines(Np,lowerNpIV[,2],lty="dashed",col="blue",xaxt="n")
+lines(Np,coefNpLLRel[,2],col="purple",xaxt="n")
+lines(Np,coefNpLLRel[,2]+qnorm(0.95)*coefNpLLSeRel[,2],lty="dashed",col="purple",xaxt="n")
+lines(Np,coefNpLLRel[,2]-qnorm(0.95)*coefNpLLSeRel[,2],lty="dashed",col="purple",xaxt="n")
+axis(1, at = Np)
+grid()
+abline(h=0)
+# legend(locator(1),legend=c("LM","LM Naive","IV","LL"),col=c("black","red","blue","purple"),lty=1,cex=1.0)
+legend("topleft",legend=c("OLS","OLS NAIVE","Instrumental Variable","Maximum Likelihood"),col=c("black","red","blue","purple"),lty=1,cex=1.0, ncol=4)
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRelGammaR.pdf")
 
+dev.new()
+plot(Np,coefNpLM[,3],type="l",ylab = TeX("Relative error $\\gamma_D$"), xaxt = "n",ylim=range(coefNpLM[,3],lowerNpLM[,3],upperNpLM[,3],coefNpLMNaive[,3],lowerNpLMNaive[,3],upperNpLMNaive[,3],coefNpIV[,3],lowerNpIV[,3],upperNpIV[,3],coefNpLLRel[,3]))
+lines(Np,lowerNpLM[,3],lty="dashed",col="black",xaxt="n")
+lines(Np,upperNpLM[,3],lty="dashed",col="black",xaxt="n")
+lines(Np,coefNpLMNaive[,3],col="red",xaxt="n")
+lines(Np,lowerNpLMNaive[,3],lty="dashed",col="red",xaxt="n")
+lines(Np,upperNpLMNaive[,3],lty="dashed",col="red",xaxt="n")
+lines(Np,coefNpIV[,3],col="blue",xaxt="n")
+lines(Np,lowerNpIV[,3],lty="dashed",col="blue",xaxt="n")
+lines(Np,upperNpIV[,3],lty="dashed",col="blue",xaxt="n")
+lines(Np,coefNpLLRel[,3],col="purple",xaxt="n")
+lines(Np,coefNpLLRel[,3]+qnorm(0.95)*coefNpLLSeRel[,3],lty="dashed",col="purple",xaxt="n")
+lines(Np,coefNpLLRel[,3]-qnorm(0.95)*coefNpLLSeRel[,3],lty="dashed",col="purple",xaxt="n")
+axis(1, at = Np)
+grid()
+abline(h=0)
+# legend(locator(1),legend=c("LM","LM Naive","IV","LL"),col=c("black","red","blue","purple"),lty=1,cex=1.0)
+legend("topleft",legend=c("OLS","OLS NAIVE","Instrumental Variable","Maximum Likelihood"),col=c("black","red","blue","purple"),lty=1,cex=1.0, ncol=4)
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRelGammaD.pdf")
 
-# X-axis
 
 
 # montecarlo analysis ----
 load("../datasets_montecarlo/resultMC225.RData")
-load("../datasets_montecarlo/resultMC256.RData")
+load("../datasets_montecarlo/resultMC1156.RData")
 load("../datasets_montecarlo/resultMC289.RData")
 load("../datasets_montecarlo/resultPDE225.RData")
-load("../datasets_montecarlo/resultPDE256.RData")
+load("../datasets_montecarlo/resultPDE1156.RData")
 load("../datasets_montecarlo/resultPDE289.RData")
 
-## 256 Result ----
-table256 = matrix(data = NA, nrow = 3, ncol = 4*3)
-rownames(table256) = c("gammaA","gammaR","gammaD")
-colnames(table256) = c("PDE_LM","meanMC_LM","medianMC_LM","sdMC_LM",
-                       "PDE_IV","meanMC_IV","medianMC_IV","sdMC_IV",
-                       "PDE_LL","meanMC_LL","medianMC_LL","sdMC_LL")
+## 2500 Result ----
+load("../datasets_montecarlo/DataShpRegressors2500.RData")
+estimatePDE2500_LM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE2500_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE2500_IV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
 
-table256[,"PDE_LM"] = coef(estimatePDE256_LM)[c(1,3,5)]
-table256[,"meanMC_LM"] = apply(coefMC_256_50k_LM,FUN=mean,MARGIN=2)
-table256[,"medianMC_LM"] = apply(coefMC_256_50k_LM,FUN=median,MARGIN=2)
-table256[,"sdMC_LM"] = apply(coefMC_256_50k_LM,FUN=sd,MARGIN=2)
+table2500 = matrix(data = NA, nrow = 3, ncol = 2*4)
+rownames(table2500) = c("gammaA","gammaR","gammaD")
+colnames(table2500) = c("PDE_LMNaive","seMC_LMNaive",
+                        "PDE_LM","seMC_LM",
+                        "PDE_IV","seMC_IV",
+                        "PDE_LL","seMC_LL")
 
-table256[,"PDE_IV"] = coef(estimatePDE256_IV)[c(1,2,3)]
-table256[,"meanMC_IV"] = apply(coefMC_256_50k_IV,FUN=mean,MARGIN=2)
-table256[,"medianMC_IV"] = apply(coefMC_256_50k_IV,FUN=median,MARGIN=2)
-table256[,"sdMC_IV"] = apply(coefMC_256_50k_IV,FUN=sd,MARGIN=2)
+table2500[,"PDE_LMNaive"] = coef(estimatePDE2500_LM_NAIVE)[c(1,2,3)]
+table2500[,"seMC_LMNaive"] = seNpLMNaive[which(Np==2500),] 
 
-table256[,"PDE_LL"] = estimatePDE256_LL$outARD_3MatEstimate$coef[c(1,2,3)]
-table256[,"meanMC_LL"] = apply(coefMC_256_50k_LL,FUN=mean,MARGIN=2)
-table256[,"medianMC_LL"] = apply(coefMC_256_50k_LL,FUN=median,MARGIN=2)
-table256[,"sdMC_LL"] = apply(coefMC_256_50k_LL,FUN=sd,MARGIN=2)
+table2500[,"PDE_LM"] = coef(estimatePDE2500_LM)[c(1,3,5)]
+table2500[,"seMC_LM"] = seNpLM[which(Np==2500),] 
 
-# colnames(table256) = sapply(colnames(table256),FUN=function(x) return(paste(x,"256",sep="")))
+table2500[,"PDE_IV"] = coef(estimatePDE2500_IV)[c(1,2,3)]
+table2500[,"seMC_IV"] = seNpIV[which(Np==2500),] 
+
+table2500[,"PDE_LL"] = estimateNpLL[[which(Np==2500)]]$outARD_3MatEstimate$coef[c(1,2,3)]
+table2500[,"seMC_LL"] = estimateNpLL[[which(Np==2500)]]$outARD_3MatEstimate$se_coef[c(1,2,3)]
+
+# colnames(table2500) = sapply(colnames(table2500),FUN=function(x) return(paste(x,"2500",sep="")))
 
 ## output in xtable
-table256 = rbind(table256[,1:4],table256[,5:8],table256[,9:12])
+table2500 = rbind(table2500[,1:4],table2500[,5:8],table2500[,9:12])
 
 xtable(table225,auto=TRUE)
-xtable(table256,auto=TRUE)
+xtable(table576,auto=TRUE)
 xtable(table289,auto=TRUE)
 xtable(tableAll,auto=TRUE)
 xtable(tableAll,display=rep("f",ncol(tableAll)+1))
@@ -348,95 +374,129 @@ xtable(tableAll,display=rep("f",ncol(tableAll)+1))
 
 ## table All sorted by estimation method ----
 tableLM225 = t(table225[,1:4])
-tableLM256 = t(table256[,1:4])
+tableLM576 = t(table576[,1:4])
 tableLM289 = t(table289[,1:4])
 
 tableLM_gammaA = cbind(tableLM225[,colnames(tableLM225)=="gammaA"],
-                       tableLM256[,colnames(tableLM256)=="gammaA"],
+                       tableLM576[,colnames(tableLM576)=="gammaA"],
                        tableLM289[,colnames(tableLM289)=="gammaA"])
-colnames(tableLM_gammaA) = c("225", "256", "289")
+colnames(tableLM_gammaA) = c("225", "576", "289")
 
 tableLM_gammaR = cbind(tableLM225[,colnames(tableLM225)=="gammaR"],
-                       tableLM256[,colnames(tableLM256)=="gammaR"],
+                       tableLM576[,colnames(tableLM576)=="gammaR"],
                        tableLM289[,colnames(tableLM289)=="gammaR"])
-colnames(tableLM_gammaR) = c("225", "256", "289")
+colnames(tableLM_gammaR) = c("225", "576", "289")
 
 tableLM_gammaD = cbind(tableLM225[,colnames(tableLM225)=="gammaD"],
-                       tableLM256[,colnames(tableLM256)=="gammaD"],
+                       tableLM576[,colnames(tableLM576)=="gammaD"],
                        tableLM289[,colnames(tableLM289)=="gammaD"])
-colnames(tableLM_gammaD) = c("225", "256", "289")
+colnames(tableLM_gammaD) = c("225", "576", "289")
 
 table_LM = cbind(tableLM_gammaA, tableLM_gammaR, tableLM_gammaD)
 xtable(table_LM, digits=5)
 
 
 tableIV225 = t(table225[,5:8])
-tableIV256 = t(table256[,5:8])
+tableIV576 = t(table576[,5:8])
 tableIV289 = t(table289[,5:8])
 
 tableIV_gammaA = cbind(tableIV225[,colnames(tableIV225)=="gammaA"],
-                       tableIV256[,colnames(tableIV256)=="gammaA"],
+                       tableIV576[,colnames(tableIV576)=="gammaA"],
                        tableIV289[,colnames(tableIV289)=="gammaA"])
-colnames(tableIV_gammaA) = c("225", "256", "289")
+colnames(tableIV_gammaA) = c("225", "576", "289")
 
 tableIV_gammaR = cbind(tableIV225[,colnames(tableIV225)=="gammaR"],
-                       tableIV256[,colnames(tableIV256)=="gammaR"],
+                       tableIV576[,colnames(tableIV576)=="gammaR"],
                        tableIV289[,colnames(tableIV289)=="gammaR"])
-colnames(tableIV_gammaR) = c("225", "256", "289")
+colnames(tableIV_gammaR) = c("225", "576", "289")
 
 tableIV_gammaD = cbind(tableIV225[,colnames(tableIV225)=="gammaD"],
-                       tableIV256[,colnames(tableIV256)=="gammaD"],
+                       tableIV576[,colnames(tableIV576)=="gammaD"],
                        tableIV289[,colnames(tableIV289)=="gammaD"])
-colnames(tableIV_gammaD) = c("225", "256", "289")
+colnames(tableIV_gammaD) = c("225", "576", "289")
 
 table_IV = cbind(tableIV_gammaA, tableIV_gammaR, tableIV_gammaD)
 xtable(table_IV, digits=5)
 
 tableLL225 = t(table225[,9:12])
-tableLL256 = t(table256[,9:12])
+tableLL576 = t(table576[,9:12])
 tableLL289 = t(table289[,9:12])
 
 tableLL_gammaA = cbind(tableLL225[,colnames(tableLL225)=="gammaA"],
-                       tableLL256[,colnames(tableLL256)=="gammaA"],
+                       tableLL576[,colnames(tableLL576)=="gammaA"],
                        tableLL289[,colnames(tableLL289)=="gammaA"])
-colnames(tableLL_gammaA) = c("225", "256", "289")
+colnames(tableLL_gammaA) = c("225", "576", "289")
 
 tableLL_gammaR = cbind(tableLL225[,colnames(tableLL225)=="gammaR"],
-                       tableLL256[,colnames(tableLL256)=="gammaR"],
+                       tableLL576[,colnames(tableLL576)=="gammaR"],
                        tableLL289[,colnames(tableLL289)=="gammaR"])
-colnames(tableLL_gammaR) = c("225", "256", "289")
+colnames(tableLL_gammaR) = c("225", "576", "289")
 
 tableLL_gammaD = cbind(tableLL225[,colnames(tableLL225)=="gammaD"],
-                       tableLL256[,colnames(tableLL256)=="gammaD"],
+                       tableLL576[,colnames(tableLL576)=="gammaD"],
                        tableLL289[,colnames(tableLL289)=="gammaD"])
-colnames(tableLL_gammaD) = c("225", "256", "289")
+colnames(tableLL_gammaD) = c("225", "576", "289")
 
 table_LL = cbind(tableLL_gammaA, tableLL_gammaR, tableLL_gammaD)
 xtable(table_LL, digits=5)
 
 
-# ---- MC finto white noise
-load("../datasets_montecarlo/DataShpRegressors256.RData")
+# ---- MC finto with bootstrap
+load("../datasets_montecarlo/DataShpRegressors576.RData")
+MADelta = as.numeric(MA %*% matrix(data$delta))
+MRDelta = as.numeric(MR %*% matrix(data$delta))
+MDDelta = as.numeric(MD %*% matrix(data$delta))
 
 Nm = 1000
 coefM = matrix(data=NA,nrow=Nm,ncol=3)
 for (m in 1:Nm){
     print(m)
-    datam = data
-    datam$delta = datam$delta+rnorm(256,sd=0.1)
-    estimatePDE256_LM = estimate_ARD_MC_LM(datam,shp,xA,xR,xD,MA,MR,MD)
-    coefM[m,] = estimatePDE256_LM$coefficients[c(1,3,5)]
+    
+    iBoot = sample(1:nrow(datam),replace=T)
+    datam = data[iBoot,]
+    xAm = xA[iBoot]
+    xRm = xR[iBoot]
+    xDm = xD[iBoot]
+    MADeltam = MADelta[iBoot]
+    MRDeltam = MRDelta[iBoot]
+    MDDeltam = MDDelta[iBoot]
+    
+    estimatePDE576_LMm = estimate_ARD_MC_LMBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
+    coefM[m,] = estimatePDE576_LMm$coefficients[c(1,3,5)]
 }
+
+dev.new()
+par(mfrow=c(1,3))
 # xA
-hist(coefM[,1],50,xlim=range(c(coefM[,1],SARDp$gammaA)))
+hist(coefM[,1],50,xlim=range(c(coefM[,1],SARDp$gammaA)),main="gammaA")
 abline(v=SARDp$gammaA,col="red")
+abline(v=estimatePDE576_LM$coefficients[1],col="blue")
 
 # xR
-hist(coefM[,2],50)
+hist(coefM[,2],50,main="gammaR")
 abline(v=SARDp$gammaR,col="red")
+abline(v=estimatePDE576_LM$coefficients[3],col="blue")
 
 # xD
-hist(coefM[,3],50)
+hist(coefM[,3],50,xlim=range(SARDp$gammaD,coefM[,3]),main="gammaD")
 abline(v=SARDp$gammaD,col="red")
+abline(v=estimatePDE576_LM$coefficients[5],col="blue")
+legend("topright",legend=c("true parameter","estimated via PDE"),col=c("red","blue"),lty=1,cex=1.0)
 
+dev.copy2pdf(file="bootCoeff.pdf")
 
+# Analysis of Wepsilon for different Np ----
+
+lambdaHat = vector("numeric",length(Np))
+lambdas = matrix(NA, nrow=length(Np), ncol=10)
+maxLag = vector("numeric",length(Np))
+for (i in 1:length(Np)){
+    lambdaHat[i] = round(estimateNpLL[[i]]$outARD_3MatEstimate$coef[length(estimateNpLL[[i]]$outARD_3MatEstimate$coef)], digits=3)
+    lambdas[i,] = round(coef(estimateNpLL[[i]]$SpatError$lm.errDecompose), digits=3)
+    maxLag[i] = estimateNpLL[[i]]$SpatError$maxSignifLag
+}
+
+tableW = cbind(round(Np, digits=0), lambdaHat, lambdas, maxLag)
+colnames(tableW) = c("Np", "lambda hat", paste("lambdaHat",seq(1:10)), "max lag")
+
+print(xtable(tableW), include.rownames=FALSE)

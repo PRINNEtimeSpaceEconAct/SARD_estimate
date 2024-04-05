@@ -34,8 +34,15 @@ estimate_ARD_MC_LM_NAIVE <- function(df,shp,xA,xR,xD,MA,MR,MD){
     MRDelta = as.numeric(MR %*% matrix(df$delta))
     MDDelta = as.numeric(MD %*% matrix(df$delta))
     
-    df = df %>% mutate(xA = xA, xR = xR, xD = xD,
-                       MADelta=MADelta, MRDelta=MRDelta,MDDelta=MDDelta)
+    df = df %>% mutate(xA = xA, xR = xR, xD = xD)
+    
+    LM_est = lm(delta ~ 0 + xA  + xR  + xD, data = df)
+    return(LM_est)
+}
+
+estimate_ARD_MC_LM_NAIVEBoot <- function(df,shp,xA,xR,xD,MADelta,MRDelta,MDDelta){
+    
+    df = df %>% mutate(xA = xA, xR = xR, xD = xD)
     
     LM_est = lm(delta ~ 0 + xA  + xR  + xD, data = df)
     return(LM_est)
@@ -48,6 +55,16 @@ estimate_ARD_MC_LM <- function(df,shp,xA,xR,xD,MA,MR,MD,weights=rep(1,nrow(df)))
     MADelta = as.numeric(MA %*% matrix(df$delta))
     MRDelta = as.numeric(MR %*% matrix(df$delta))
     MDDelta = as.numeric(MD %*% matrix(df$delta))
+    
+    df = df %>% mutate(xA = xA, xR = xR, xD = xD,
+                       MADelta=MADelta, MRDelta=MRDelta,MDDelta=MDDelta)
+    
+    LM_est = lm(delta ~ 0 + xA + MADelta + xR + MRDelta + xD + MDDelta, data = df, weights = weights)
+    return(LM_est)
+}
+
+estimate_ARD_MC_LMBoot <- function(df,shp,xA,xR,xD,MADelta,MRDelta,MDDelta,weights=rep(1,nrow(df))){
+    
     
     df = df %>% mutate(xA = xA, xR = xR, xD = xD,
                        MADelta=MADelta, MRDelta=MRDelta,MDDelta=MDDelta)
@@ -71,6 +88,20 @@ estimate_ARD_MC_IV <- function(df,shp,xA,xR,xD,MA,MR,MD){
     MR2X=as.matrix(MR %*% MR %*% X) 
     MD2X=as.matrix(MD %*% MD %*% X)
     
+    df = df %>% mutate(xA = xA, xR = xR, xD = xD,
+                       MADelta=MADelta, MRDelta=MRDelta,MDDelta=MDDelta,
+                       MA2X=MA2X[,],MR2X=MR2X[,],MD2X=MD2X[,])
+    
+    IV_est = ivreg(delta ~ 0 + xA + xR + xD + 
+                       + MADelta + MRDelta + MDDelta  | 
+                       xA + xR + xD + MA2X + MR2X + MD2X , data=df)
+    
+    return(IV_est)
+}
+
+estimate_ARD_MC_IVBoot <- function(df,shp,xA,xR,xD,MADelta,MRDelta,MDDelta,MA2X,MR2X,MD2X){
+    
+
     df = df %>% mutate(xA = xA, xR = xR, xD = xD,
                        MADelta=MADelta, MRDelta=MRDelta,MDDelta=MDDelta,
                        MA2X=MA2X[,],MR2X=MR2X[,],MD2X=MD2X[,])

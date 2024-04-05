@@ -4,11 +4,11 @@ source("lib/L_loadAll.R")
 DEBUG = TRUE
 PARALLEL = TRUE
 NPROCS = 30
-folderName = "../datasets_it/"
-
 initJulia()
 
 
+
+folderName = "../datasets_it/"
 rawData = create_df(folderName)
 data = rawData$data
 shp_data = rawData$shp_data
@@ -51,35 +51,35 @@ names(outSARDEstimate$coefSARD) <- c("alpha","phi","gammaS","gammaA","gammaR","g
 
 ### SARD ----
 SARDCoeff = outSARDEstimate$coefSARD
-yFutSARD = forcastSARD(50,SARDCoeff,hA,hR,data,tau=11)
+yFutSARD = forcastSARD(11,SARDCoeff,hA,hR,data,tau=11)
 save(yFutSARD,file="../datasets_it/yFutSARD.RData")
 
 ### ARD ----
 ARDCoeff = outSARDEstimate$coefSARD
 ARDCoeff["gammaS"] = 0
 ARDCoeff["rhoS"] = 0
-yFutARD = forcastSARD(50,ARDCoeff,hA,hR,data,tau=11)
+yFutARD = forcastSARD(11,ARDCoeff,hA,hR,data,tau=11)
 save(yFutARD,file="../datasets_it/yFutARD.RData")
 
 ### SRD ----
 SRDCoeff = outSARDEstimate$coefSARD
 SRDCoeff["gammaA"] = 0
 SRDCoeff["rhoA"] = 0
-yFutSRD = forcastSARD(50,SRDCoeff,hA,hR,data,tau=11)
+yFutSRD = forcastSARD(11,SRDCoeff,hA,hR,data,tau=11)
 save(yFutSRD,file="../datasets_it/yFutSRD.RData")
 
 ### SAD ----
 SADCoeff = outSARDEstimate$coefSARD
 SADCoeff["gammaR"] = 0
 SADCoeff["rhoR"] = 0
-yFutSAD = forcastSARD(50,SADCoeff,hA,hR,data,tau=11)
+yFutSAD = forcastSARD(11,SADCoeff,hA,hR,data,tau=11)
 save(yFutSAD,file="../datasets_it/yFutSAD.RData")
 
 ### SAR ----
 SARCoeff = outSARDEstimate$coefSARD
-SARCoeff["gammaR"] = 0
-SARCoeff["rhoR"] = 0
-yFutSAR = forcastSARD(50,SARCoeff,hA,hR,data,tau=11)
+SARCoeff["gammaD"] = 0
+SARCoeff["rhoD"] = 0
+yFutSAR = forcastSARD(11,SARCoeff,hA,hR,data,tau=11)
 save(yFutSAR,file="../datasets_it/yFutSAR.RData")
 
 # save
@@ -91,18 +91,60 @@ load(file="../datasets_it/yFutSAR.RData")
 dfForecast = data.frame(yFutSARD=yFutSARD,yFutARD=yFutARD,yFutSRD=yFutSRD,yFutSAD=yFutSAD,yFutSAR=yFutSAR) 
 save(dfForecast,file="../datasets_it/dfForecast.RData")
 
-# maps
-load("../datasets_it/dfForecast.RData")
+## Maps ----
+load("../datasets_it/dfForecast2069.RData")
 shpAll = get_data(folderName)$shp
 mapYFinalForecast(dfForecast,data,shpAll,"../datasets_it/map_incomeKm2_2069SARD.pdf")
-mapGRForecast(data,shpAll,dfForecast$yFutSARD,"../datasets_it/yFutSARDGR.pdf",counterfactual=FALSE)
-mapGRForecast(data,shpAll,dfForecast$yFutARD,"../datasets_it/yFutARDGR.pdf",counterfactual=TRUE)
-mapGRForecast(data,shpAll,dfForecast$yFutSRD,"../datasets_it/yFutSRDGR.pdf",counterfactual=TRUE)
-mapGRForecast(data,shpAll,dfForecast$yFutSAD,"../datasets_it/yFutSADGR.pdf",counterfactual=TRUE)
-mapGRForecast(data,shpAll,dfForecast$yFutSAR,"../datasets_it/yFutSARGR.pdf",counterfactual=TRUE)
+mapGRForecast(data,shpAll,dfForecast,dfForecast$yFutSARD,"../datasets_it/deltaSARDnorm",counterfactual=FALSE)
 
-# Table results ----
+load("../datasets_it/dfForecast.RData")
+shpAll = get_data(folderName)$shp
+mapGRForecast(data,shpAll,dfForecast,dfForecast$yFutARD,"../datasets_it/deltaSInSample.pdf",counterfactual=TRUE)
+mapGRForecast(data,shpAll,dfForecast,dfForecast$yFutSRD,"../datasets_it/deltaAInSample.pdf",counterfactual=TRUE)
+mapGRForecast(data,shpAll,dfForecast,dfForecast$yFutSAD,"../datasets_it/deltaRInSample.pdf",counterfactual=TRUE)
+mapGRForecast(data,shpAll,dfForecast,dfForecast$yFutSAR,"../datasets_it/deltaDInSample.pdf",counterfactual=TRUE)
+
+
+## Table metro ----
+load("../datasets_it/dfForecast.RData")
+
+data = cbind(data, dfForecast)
+data = data %>% mutate(GR.SARD = ifelse(yFutSARD > 0, (log(yFutSARD/y0)/11*100), 0), 
+                       GR.S = ifelse(yFutARD > 0, (log(yFutARD/y0)/11*100), 0), 
+                       GR.A = ifelse(yFutSRD > 0, (log(yFutSRD/y0)/11*100), 0),
+                       GR.R = ifelse(yFutSAD > 0, (log(yFutSAD/y0)/11*100), 0), 
+                       GR.D = ifelse(yFutSAR > 0, (log(yFutSAR/y0)/11*100), 0))
+
+D = compute_D(data,longlat=TRUE,torus=FALSE)
+dCut <- function(d,cut) ((d <= cut) & (d > 0))
+WhA = dCut(D,hA)
+diag(WhA) = 0
+WhR = dCut(D,hR)
+diag(WhR) = 0
+
+data = data %>% mutate(WhAy0 = as.numeric(WhA%*%y0),
+                       WhRy0 = as.numeric(WhR%*%y0),
+                       ratioWhA=WhAy0/y0,
+                       ratioWhR=WhRy0/y0)
+
+data = data %>% mutate(cities=ifelse(geo=="058091" | geo=="015146" 
+                                      | geo=="063049" |geo=="001272" | geo=="072006" 
+                                      | geo=="082053" | geo=="087015" | geo=="037006" 
+                                      | geo=="048017" | geo=="027042" | geo=="010025" 
+                                      | geo=="083048" | geo=="080063" | geo=="092009", 1, 0))  
+cities = data %>% filter(cities == 1) %>% select(NameGeo, y0, WhAy0, WhRy0, ratioWhA, ratioWhR, 
+                                                 GR.SARD, GR.S, GR.A, GR.R, GR.D) %>% arrange(desc(y0)) %>%
+                                         mutate(NameGeo=tolower(NameGeo))
+
+
+print(xtable(cities, digits=2), include.rownames=FALSE)
+
+
+# Table results SARD ----
 replace_numbers = function(x, low=0.01, high=1e3, digits = 3, scipen=-10, ...) {
+    
+    mark  = '::::'
+    reg = paste0("([0-9.\\-]+", mark, "[0-9.\\-]+)")
     nCharx = nchar(x)
     x = gsub(mark,'.',x)
     x.num = as.numeric(x)
@@ -149,4 +191,20 @@ LL0 = logLik(lm(delta ~ 1, data = regressors))
 R2Nagelkerke =  c(1 - exp(-(2/N)*(logLik(naiveSARD) - LL0)))
 
 
+regressors = outSARDEstimate$IV_estimator$IV_est$model
+WN_SARD_OLS = lm(delta ~ y0 + xS + xA + xR + xD + MSDelta + MADelta + MRDelta + MDDelta, data = regressors)
 
+WN_SARD_OLSCoef = WN_SARD_OLS$coefficients
+names(WN_SARD_OLSCoef) <- c("alpha","phi","gammaS","gammaA","gammaR","gammaD","rhoS","rhoA","rhoR","rhoD")
+niceOutputWN_SARD_OLSCoef = unlist(lapply(WN_SARD_OLSCoef, FUN = replace_numbers))  
+
+WN_SARD_OLSse = sqrt(diag(vcov(WN_SARD_OLS)))
+names(WN_SARD_OLSse) <- c("alpha","phi","gammaS","gammaA","gammaR","gammaD","rhoS","rhoA","rhoR","rhoD")
+niceOutputWN_SARD_OLSse= unlist(lapply(WN_SARD_OLSse, FUN = replace_numbers))  
+
+
+k = length(coef(WN_SARD_OLS))
+N = nrow(regressors)
+AICc = AIC(WN_SARD_OLS) + (2*k^2+2*k)/(N-k-1)
+LL0 = logLik(lm(delta ~ 1, data = regressors))
+R2Nagelkerke =  c(1 - exp(-(2/N)*(logLik(WN_SARD_OLS) - LL0)))

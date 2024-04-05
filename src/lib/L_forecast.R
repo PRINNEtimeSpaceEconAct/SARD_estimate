@@ -17,7 +17,7 @@ forcastSARD <- function(NPeriods,SARDCoeff,hA,hR,df,tau=11){
     rhoA = SARDCoeff[8]/correction*2/tau
     rhoR = SARDCoeff[9]/correction*2/tau
     rhoD = SARDCoeff[10]/correction*2/tau
-
+    
     MsDeriv = GFDM(df)
     D = compute_D(df)
     WhA = compute_WhAR(D,df,hA)
@@ -27,16 +27,16 @@ forcastSARD <- function(NPeriods,SARDCoeff,hA,hR,df,tau=11){
     MyWA = MsDeriv$My %*% as(WhA,"sparseMatrix")
     MxWR = MsDeriv$Mx %*% as(WhR,"sparseMatrix")
     MyWR = MsDeriv$My %*% as(WhR,"sparseMatrix")
-
+    
     MS = compute_MSLag(df,MsDeriv)
     MD = compute_MDLag(MsDeriv)
     
     Id <- as(diag(nrow(df)),"sparseMatrix")
     
-    y = df$yT
+    y = df$y0
     for (t in 1:NPeriods){
         print(t)
-
+        
         MA = compute_MARLag(df,MsDeriv,WhA)
         MR = compute_MARLag(df,MsDeriv,WhR)
         yPre = y

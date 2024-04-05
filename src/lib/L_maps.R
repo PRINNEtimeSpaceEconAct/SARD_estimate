@@ -81,12 +81,12 @@ mapYFinalForecast <- function(df,data,shp,fileName){
 }
 
 
-mapGRForecast <- function(data,shp,VarFinal,fileName,counterfactual=TRUE){
+mapGRForecast <- function(data,shp,dfForecast,VarFinal,fileName,counterfactual=TRUE){
     
-    data = cbind(data,VarFinal)
+    data = cbind(data,VarFinal,yFutSARD = dfForecast$yFutSARD)
     shp <- shp %>% left_join(select(data,-c("Latitude","Longitude")), by=c("PRO_COM_T"="geo"))
-    shp <- shp %>% mutate(GR.VarFinal = ifelse(VarFinal > 0, (log(VarFinal/yT)/50*100), 0))
-    data <- data %>% mutate(GR.VarFinal = ifelse(VarFinal > 0, (log(VarFinal/yT)/50*100), 0))
+    shp <- shp %>% mutate(GR.VarFinal = ifelse(VarFinal > 0, (log(VarFinal/y0)/11*100), 0))
+    data <- data %>% mutate(GR.VarFinal = ifelse(VarFinal > 0, (log(VarFinal/y0)/11*100), 0))
     
     shp <- shp %>% mutate(cities=ifelse(PRO_COM_T=="058091" | PRO_COM_T=="015146" | PRO_COM_T=="063049" |PRO_COM_T=="001272" | PRO_COM_T=="072006" | PRO_COM_T=="082053" | PRO_COM_T=="087015" | PRO_COM_T=="037006" | PRO_COM_T=="048017" | PRO_COM_T=="027042" | PRO_COM_T=="010025" | PRO_COM_T=="083048" | PRO_COM_T=="080063" | PRO_COM_T=="092009", 1, 0))  
     cities = shp %>% filter(cities == 1)
@@ -94,7 +94,12 @@ mapGRForecast <- function(data,shp,VarFinal,fileName,counterfactual=TRUE){
 
     dev.new()
     if (counterfactual) {
-        plotRescaledVar <- plotRescaledVarf(shp=shp, data=data, var.name="GR.VarFinal", id.name="geo", nqq=5, includeZero=F)
+        shp <- shp %>% mutate(GR.SARD = ifelse(yFutSARD > 0, (log(yFutSARD/y0)/11*100), 0))
+        data <- data %>% mutate(GR.SARD = ifelse(yFutSARD > 0, (log(yFutSARD/y0)/11*100), 0))
+        shp = shp %>% mutate(GR.plot = GR.SARD - GR.VarFinal)
+        data = data %>% mutate(GR.plot = GR.SARD - GR.VarFinal)
+        
+        plotRescaledVar <- plotRescaledVarf(shp=shp, data=data, var.name="GR.plot", id.name="geo", nqq=5, includeZero=F)
         tm_obj <- tm_shape(plotRescaledVar$shp) + tm_fill("varDraw", title="Annual growth rate (%)", breaks=plotRescaledVar$breaks_qt,  palette="RdBu", midpoint =0, labels=plotRescaledVar$lab) + tm_layout(frame = FALSE) + tm_borders("white", alpha=0) + tmap_options(check.and.fix = TRUE)
         tm_obj
     }
