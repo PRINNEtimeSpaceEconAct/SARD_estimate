@@ -851,7 +851,7 @@ estimatePDE_LM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
 estimatePDE_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
 estimatePDE_IV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
 estimatePDE_LL = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
-save(estimatePDE_LM_NAIVE,estimatePDE_LM,estimatePDE_IV,estimatePDE_LL, file = "../dataset_montecarlo/EstimateWORST.RData")
+save(estimatePDE_LM_NAIVE,estimatePDE_LM,estimatePDE_IV,estimatePDE_LL, file = "../datasets_montecarlo/EstimateWORST.RData")
 
 coefLL = estimatePDE_LL$outARD_3MatEstimate$coef[c(1,2,3,4,5)]
 covBeta = estimatePDE_LL$outARD_3MatEstimate$covBeta
@@ -860,6 +860,12 @@ coefMLMNaive = matrix(data = NA, nrow = Nm, ncol = 5)
 coefMLM = matrix(data = NA, nrow = Nm, ncol = 5)
 coefMIV = matrix(data = NA, nrow = Nm, ncol = 5)
 coefMLL = matrix(data = NA, nrow = Nm, ncol = 5)
+
+X = data.frame(xA=xA,xR=xR,xD=xD)
+X = as.matrix(X)
+MA2X=as.matrix(MA %*% MA %*% X)
+MR2X=as.matrix(MR %*% MR %*% X) 
+MD2X=as.matrix(MD %*% MD %*% X)
 for (m in 1:Nm){
     # print(m)
     
@@ -1003,9 +1009,9 @@ estimatePDE_LM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
 estimatePDE_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
 estimatePDE_IV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
 estimatePDE_LL = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
-save(estimatePDE_LM_NAIVE,estimatePDE_LM,estimatePDE_IV,estimatePDE_LL, file = "../dataset_montecarlo/EstimateBEST.RData")
+save(estimatePDE_LM_NAIVE,estimatePDE_LM,estimatePDE_IV,estimatePDE_LL, file = "../datasets_montecarlo/EstimateBEST.RData")
 
-
+load("../datasets_montecarlo/EstimateBEST.RData")
 coefLL = estimatePDE_LL$outARD_3MatEstimate$coef[c(1,2,3,4,5)]
 covBeta = estimatePDE_LL$outARD_3MatEstimate$covBeta
 y0yT = matrix(data = NA, nrow = Nm, ncol = 2); 
@@ -1013,6 +1019,12 @@ coefMLMNaive = matrix(data = NA, nrow = Nm, ncol = 5)
 coefMLM = matrix(data = NA, nrow = Nm, ncol = 5)
 coefMIV = matrix(data = NA, nrow = Nm, ncol = 5)
 coefMLL = matrix(data = NA, nrow = Nm, ncol = 5)
+
+X = data.frame(xA=xA,xR=xR,xD=xD)
+X = as.matrix(X)
+MA2X=as.matrix(MA %*% MA %*% X)
+MR2X=as.matrix(MR %*% MR %*% X) 
+MD2X=as.matrix(MD %*% MD %*% X)
 for (m in 1:Nm){
     # print(m)
     
@@ -1086,22 +1098,22 @@ seLL  = apply(coefMLL,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
 
 round(coefLMNaive,digits = 5)
 round(estimatePDE_LM_NAIVE$AICc,digits = 2) 
-round(estimatePDE_LM_NAIVE$R2, digits = 4)
+round(estimatePDE_LM_NAIVE$R2, digits = 5)
 round(seLMNaive, digits = 5)
 
 round(coefLM,digits = 5)
 round(estimatePDE_LM$AICc,digits = 2) 
-round(estimatePDE_LM$R2, digits = 4)
+round(estimatePDE_LM$R2, digits = 5)
 round(seLM, digits = 5)
 
 round(coefIV,digits = 5)
 round(estimatePDE_IV$AICc,digits = 2) 
-round(estimatePDE_IV$R2, digits = 4)
+round(estimatePDE_IV$R2, digits = 5)
 round(seIV, digits = 5)
 
 round(coefLL,digits = 5)
 round(estimatePDE_LL$AICc,digits = 2) 
-round(estimatePDE_LL$R2, digits = 4)
+round(estimatePDE_LL$R2, digits = 5)
 round(seLL, digits = 5)
 
 
