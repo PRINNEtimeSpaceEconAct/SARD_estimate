@@ -10,7 +10,7 @@ Na=100
 Nm = 1000
 tau= 1.0
 NeS = 100
-SARDp = list(gammaS = 0.0, gammaA = -0.00175, gammaR = 0.0025, gammaD = 0.00525, hA = 0.15, hR = 0.4)
+SARDp = list(alpha = 0.01, phi = 0.01, gammaS = 0.0, gammaA = -0.00175, gammaR = 0.0025, gammaD = 0.00525, hA = 0.15, hR = 0.4)
 
 # PDE once ----
 PDEAll = call_julia_computePDE(tau,SARDp)
@@ -21,7 +21,7 @@ Np = 144
 
 ## create PDE shape ----
 shpMC = createShape(Np, typeOfDist = "Uniform")
-load(file="../datasets_montecarlo/PDE.RData")
+# load(file="../datasets_montecarlo/PDE.RData")
 Xpde = PDEAll$X
 Ypde = PDEAll$Y
 PDE0 = PDEAll$PDE0
@@ -35,11 +35,11 @@ S = SComputed$S
 data_shp = createDataframePDE(PDE0, PDET, Xpde, Ypde, shpMC, tau, Xs, Ys, S)
 data = data_shp$data
 shp = data_shp$shp_sf
-save(data,shp,file="../datasets_montecarlo/PDEdatashp144.RData")
+# save(data,shp,file="../datasets_montecarlo/PDEdatashp144.RData")
 
 
 ## create regressors ----
-load(file="../datasets_montecarlo/PDEdatashp144.RData")
+# load(file="../datasets_montecarlo/PDEdatashp144.RData")
 
 MsDeriv = GFDM(data,torus=TRUE)
 D = compute_D(data,longlat=FALSE,torus=TRUE)
@@ -53,85 +53,94 @@ MR = compute_MARLag(data,MsDeriv,WhR)
 MD = compute_MDLag(MsDeriv)
 shp = cbind(shp,xA,xR,xD)
 plot(shp[c("y0","yT","delta","xA","xR","xD")])
-save(data,shp,xA,xR,xD,MA,MR,MD,file="../datasets_montecarlo/DataShpRegressors144.RData")
+# save(data,shp,xA,xR,xD,MA,MR,MD,file="../datasets_montecarlo/DataShpRegressors144.RData")
 
 
 ## estimate PDE LL ----
-load("../datasets_montecarlo/DataShpRegressors1156.RData")
-estimatePDE1156_LM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
-estimatePDE1156_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
-estimatePDE1156_IV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
-estimatePDE1156_LL = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
-save(estimatePDE1156_LM_NAIVE,estimatePDE1156_LM,estimatePDE1156_IV,estimatePDE1156_LL,file="../datasets_montecarlo/resultPDE1156.RData")
+# load("../datasets_montecarlo/DataShpRegressors1156.RData")
+estimatePDE_LM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE_IV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE_LL = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
+# save(estimatePDE_LM_NAIVE,estimatePDE_LM,estimatePDE_IV,estimatePDE_LL,file="../datasets_montecarlo/resultPDE.RData")
+
+yT = sum(data$yT)/Np
+y0 = sum(data$y0)/Np
+coefsLMTilde = estimatePDE_LM$coefficients[c(1,2,3,5,7)]
+rhoPhiLM = 2/tau*(1-log( (yT + coefsLMTilde["(Intercept)"]/coefsLMTilde["y0"])/(y0 + coefsLMTilde["(Intercept)"]/coefsLMTilde["y0"]) )/(tau*coefsLMTilde["y0"]) )
+coefsLM = coefsLMTilde*(1-tau*rhoPhiLM/2)
 
 
-load(file="../datasets_montecarlo/resultPDE1156.RData")
-
-LM_est = estimatePDE1156_LM; s = summary(LM_est)
+# load(file="../datasets_montecarlo/resultPDE.RData")
+LM_est = estimatePDE_LM; s = summary(LM_est)
 print(paste("xA in ",round((SARDp$gammaA-LM_est$coefficients["xA"])/s$coefficients["xA","Std. Error"],digits=2)," std. error, and ",round(abs(SARDp$gammaA-LM_est$coefficients["xA"])/abs(SARDp$gammaA),digits=2), " relative error.", sep=""))
 print(paste("xR in ",round((SARDp$gammaR-LM_est$coefficients["xR"])/s$coefficients["xR","Std. Error"],digits=2)," std. error, and ",round(abs(SARDp$gammaR-LM_est$coefficients["xR"])/abs(SARDp$gammaR),digits=2), " relative error.", sep=""))
 print(paste("xD in ",round((SARDp$gammaD-LM_est$coefficients["xD"])/s$coefficients["xD","Std. Error"],digits=2)," std. error, and ",round(abs(SARDp$gammaD-LM_est$coefficients["xD"])/abs(SARDp$gammaD),digits=2), " relative error.", sep=""))
 
-print(paste("xA in ",round((SARDp$gammaA- estimatePDE1156_LL$outARD_3MatEstimate$coef[1])/abs(SARDp$gammaA),digits=2), " relative error.", sep=""))
-print(paste("xR in ",round((SARDp$gammaR- estimatePDE1156_LL$outARD_3MatEstimate$coef[2])/abs(SARDp$gammaR),digits=2), " relative error.", sep=""))
-print(paste("xD in ",round((SARDp$gammaD- estimatePDE1156_LL$outARD_3MatEstimate$coef[3])/abs(SARDp$gammaD),digits=2), " relative error.", sep=""))
+print(paste("xA in ",round((SARDp$gammaA- estimatePDE_LL$outARD_3MatEstimate$coef[1])/abs(SARDp$gammaA),digits=2), " relative error.", sep=""))
+print(paste("xR in ",round((SARDp$gammaR- estimatePDE_LL$outARD_3MatEstimate$coef[2])/abs(SARDp$gammaR),digits=2), " relative error.", sep=""))
+print(paste("xD in ",round((SARDp$gammaD- estimatePDE_LL$outARD_3MatEstimate$coef[3])/abs(SARDp$gammaD),digits=2), " relative error.", sep=""))
 
 
 
 ## plot shp ----
-load("../datasets_montecarlo/DataShpRegressors144.RData")
 
 dev.new()
-plot(shp["y0"])
+plot(shp["y0"],main="")
 dev.copy2pdf(file="../datasets_montecarlo/y0144.pdf")
 
 dev.new()
-plot(shp["yT"])
+plot(shp["yT"],main="")
 dev.copy2pdf(file="../datasets_montecarlo/yT144.pdf")
 
 dev.new()
-plot(shp["delta"])
+plot(shp["delta"],main="")
 dev.copy2pdf(file="../datasets_montecarlo/delta144.pdf")
 
 dev.new()
-plot(cbind(shp,xA)["xA"])
+plot(cbind(shp,xA)["xA"],main="")
 dev.copy2pdf(file="../datasets_montecarlo/xA144.pdf")
 
 dev.new()
-plot(cbind(shp,xR)["xR"])
+plot(cbind(shp,xR)["xR"],main="")
 dev.copy2pdf(file="../datasets_montecarlo/xR144.pdf")
 
 dev.new()
-plot(cbind(shp,xD)["xD"])
+plot(cbind(shp,xD)["xD"],main="")
 dev.copy2pdf(file="../datasets_montecarlo/xD144.pdf")
 
 ## plot contour PDE ----
 dev.new()
 filled.contour(t(PDE0), color.palette=plasma)
-dev.copy2pdf(file="../datasets_montecarlo/y01156_continuosSpace.pdf")
+dev.copy2pdf(file="../datasets_montecarlo/y0_continuosSpace.pdf")
 dev.new()
 filled.contour(t(PDET), color.palette=plasma)
-dev.copy2pdf(file="../datasets_montecarlo/yT1156_continuosSpace.pdf")
+dev.copy2pdf(file="../datasets_montecarlo/yT_continuosSpace.pdf")
 dev.new()
-filled.contour(t(PDET)-t(PDE0), color.palette=plasma)
+filled.contour((t(PDET)-t(PDE0))/tau, color.palette=plasma)
 dev.copy2pdf(file="../datasets_montecarlo/delta_continuosSpace.pdf")
 
 # montecarlo PDE different Np ----
 load(file="../datasets_montecarlo/PDE.RData")
 
-lengthAll = seq(from=12,to=50,by=1)
+lengthAll = c(12,20,30,40,50)
 NpAll = lengthAll^2
 Nm = 1000
-coefMNpLM = array(data=NA,dim=c(length(NpAll),Nm,3))
-coefMNpLMNaive = array(data=NA,dim=c(length(NpAll),Nm,3))
-coefMNpIV = array(data=NA,dim=c(length(NpAll),Nm,3))
+coefMNpLMNaive = array(data=NA,dim=c(length(NpAll),Nm,5))
+coefMNpLM = array(data=NA,dim=c(length(NpAll),Nm,5))
+coefMNpIV = array(data=NA,dim=c(length(NpAll),Nm,5))
+coefNpLL = matrix(data=NA,nrow=length(NpAll),ncol=5)
 estimateNpLL = list()
-coefNpLL = matrix(data=NA,nrow=length(NpAll),ncol=3)
+AICR2LMNaive = matrix(data = NA, nrow = length(NpAll), ncol = 2); colnames(AICR2LMNaive) = c("AICc","R2")
+AICR2LM = matrix(data = NA, nrow = length(NpAll), ncol = 2); colnames(AICR2LM) = c("AICc","R2")
+AICR2IV = matrix(data = NA, nrow = length(NpAll), ncol = 2); colnames(AICR2IV) = c("AICc","R2")
+AICR2LL = matrix(data = NA, nrow = length(NpAll), ncol = 2); colnames(AICR2LL) = c("AICc","R2")
+y0yT = array(data=NA,dim=c(length(NpAll),Nm,2)); 
+
 for (i in 1:length(NpAll)){
     Np = NpAll[i]
     print(i)
     print(Np)
-    ## create PDE shape ----
     shpMC = createShape(Np, typeOfDist = "Uniform")
     Xpde = PDEAll$X
     Ypde = PDEAll$Y
@@ -147,7 +156,6 @@ for (i in 1:length(NpAll)){
     data = data_shp$data
     shp = data_shp$shp_sf
     
-    ## create regressors ----
     MsDeriv = GFDM(data,torus=TRUE)
     D = compute_D(data,longlat=FALSE,torus=TRUE)
     WhA = compute_WhAR(D,data,SARDp$hA)
@@ -171,8 +179,20 @@ for (i in 1:length(NpAll)){
     MR2X=as.matrix(MR %*% MR %*% X) 
     MD2X=as.matrix(MD %*% MD %*% X)
     
+    
+    estimateNpLM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
+    AICR2LMNaive[i,] = c(estimateNpLM_NAIVE$AICc,estimateNpLM_NAIVE$R2)
+    
+    estimateNpLM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
+    AICR2LM[i,] = c(estimateNpLM$AICc,estimateNpLM$R2)
+    
+    estimateNpIV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
+    AICR2IV[i,] = c(estimateNpIV$AICc,estimateNpIV$R2)
+    
     estimateNpLL[[i]] = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
-    coefNpLL[i,] = estimateNpLL[[i]]$outARD_3MatEstimate$coef[c(1,2,3)]
+    AICR2LL[i,] = c(estimateNpLL[[i]]$AICc,estimateNpLL[[i]]$R2)
+    coefNpLL[i,] = estimateNpLL[[i]]$outARD_3MatEstimate$coef[c(1,2,3,4,5)]
+    
     for (m in 1:Nm){
         # print(m)
         
@@ -187,272 +207,663 @@ for (i in 1:length(NpAll)){
         MA2Xm=MA2X[iBoot,]
         MR2Xm=MR2X[iBoot,]
         MD2Xm=MD2X[iBoot,]
+        y0yT[i,m,1] = sum(datam$y0)*1/Np
+        y0yT[i,m,2] = sum(datam$yT)*1/Np
+        
+
+        estimatePDE_LMNaivem = estimate_ARD_MC_LM_NAIVEBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
+        coefMNpLMNaive[i,m,] = estimatePDE_LMNaivem$coefficients[c(1,2,3,4,5)]
         
         estimatePDE_LMm = estimate_ARD_MC_LMBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
-        coefMNpLM[i,m,] = estimatePDE_LMm$coefficients[c(1,3,5)]
+        coefMNpLM[i,m,] = estimatePDE_LMm$coefficients[c(1,2,3,5,7)]
         
-        estimatePDE_LMNaivem = estimate_ARD_MC_LM_NAIVEBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
-        coefMNpLMNaive[i,m,] = estimatePDE_LMNaivem$coefficients[c(1,2,3)]
-
         estimatePDE_IVm = estimate_ARD_MC_IVBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam,MA2Xm,MR2Xm,MD2Xm)
-        coefMNpIV[i,m,] = coef(estimatePDE_IVm)[c(1,2,3)]
-        
+        coefMNpIV[i,m,] = coef(estimatePDE_IVm)[c(1,2,3,4,5)]
     }
 }
-save(NpAll,coefMNpLM,coefMNpLMNaive,coefMNpIV,coefNpLL,estimateNpLL,file="../datasets_montecarlo/montecarloPDENpGrid.RData")
+save(NpAll,coefMNpLM,coefMNpLMNaive,coefMNpIV,coefNpLL,estimateNpLL,AICR2LMNaive,AICR2LM,AICR2IV,AICR2LL,y0yT,file="../datasets_montecarlo/montecarloPDENpGrid.RData")
 
-## with SE ----
-load(file="../datasets_montecarlo/montecarloPDENpGrid.RData")
+## robust SE  ----
 library(latex2exp)
+load(file="../datasets_montecarlo/montecarloPDENpGrid.RData")
 Np = NpAll
-coefRep = matrix(rep(c(SARDp$gammaA,SARDp$gammaR,SARDp$gammaD),Nm),nrow=Nm,byrow = T)
-coefNpLM = matrix(data=NA,nrow=length(Np),ncol=3)
-lowerNpLM = matrix(data=NA,nrow=length(Np),ncol=3)
-upperNpLM = matrix(data=NA,nrow=length(Np),ncol=3)
-seNpLM = matrix(data=NA,nrow=length(Np),ncol=3)
-coefNpLMNaive = matrix(data=NA,nrow=length(Np),ncol=3)
-lowerNpLMNaive = matrix(data=NA,nrow=length(Np),ncol=3)
-upperNpLMNaive = matrix(data=NA,nrow=length(Np),ncol=3)
-seNpLMNaive = matrix(data=NA,nrow=length(Np),ncol=3)
-coefNpIV = matrix(data=NA,nrow=length(Np),ncol=3)
-lowerNpIV = matrix(data=NA,nrow=length(Np),ncol=3)
-upperNpIV = matrix(data=NA,nrow=length(Np),ncol=3)
-seNpIV = matrix(data=NA,nrow=length(Np),ncol=3)
-coefNpLLRel = matrix(data=NA,nrow=length(Np),ncol=3)
-coefNpLLSeRel = matrix(data=NA,nrow=length(Np),ncol=3)
-    
+Nm = dim(coefMNpLM)[2]
+coefRep = matrix(rep(c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD),Nm),nrow=Nm,byrow = T)
+coefNpLM = matrix(data=NA,nrow=length(Np),ncol=5)
+lowerNpLM = matrix(data=NA,nrow=length(Np),ncol=5)
+upperNpLM = matrix(data=NA,nrow=length(Np),ncol=5)
+seNpLM = matrix(data=NA,nrow=length(Np),ncol=5)
+coefNpLMNaive = matrix(data=NA,nrow=length(Np),ncol=5)
+lowerNpLMNaive = matrix(data=NA,nrow=length(Np),ncol=5)
+upperNpLMNaive = matrix(data=NA,nrow=length(Np),ncol=5)
+seNpLMNaive = matrix(data=NA,nrow=length(Np),ncol=5)
+coefNpIV = matrix(data=NA,nrow=length(Np),ncol=5)
+lowerNpIV = matrix(data=NA,nrow=length(Np),ncol=5)
+upperNpIV = matrix(data=NA,nrow=length(Np),ncol=5)
+seNpIV = matrix(data=NA,nrow=length(Np),ncol=5)
+lowerNpLL = matrix(data=NA,nrow=length(Np),ncol=5)
+upperNpLL = matrix(data=NA,nrow=length(Np),ncol=5)
+seNpLL = matrix(data=NA,nrow=length(Np),ncol=5)
+
+# new for nonTilde coefficient LL
+coefMNpLLBoot = array(data=NA,dim=c(length(NpAll),Nm,5))
+
 for (i in 1:length(Np)){
     coefMLM = coefMNpLM[i,,]
     coefMLMNaive = coefMNpLMNaive[i,,]    
     coefMIV = coefMNpIV[i,,]   
+    
     coefLL = coefNpLL[i,]
-    SELL = estimateNpLL[[i]]$outARD_3MatEstimate$se_coef[c(1,2,3)]
+    covBeta = estimateNpLL[[i]]$outARD_3MatEstimate$covBeta
     
-    errRelLM = (coefRep-coefMLM)/coefRep
-    errRelLMNaive = (coefRep-coefMLMNaive)/coefRep
-    errRelIV = (coefRep-coefMIV)/coefRep
-    coefNpLLRel[i,] =  (c(SARDp$gammaA,SARDp$gammaR,SARDp$gammaD)-coefLL)/c(SARDp$gammaA,SARDp$gammaR,SARDp$gammaD)
-    coefNpLLSeRel[i,] = SELL/(abs(c(SARDp$gammaA,SARDp$gammaR,SARDp$gammaD)))
+    for (m in 1:Nm) {
+        y0 = y0yT[i,m,1]
+        yT = y0yT[i,m,2]
+        
+        # coefficient notTilde by bootstrap for LM LMNaive and IV
+        coefLMTilde = coefMLM[m,]
+        alphaTildeLM = coefLMTilde[1]
+        phiTildeLM = coefLMTilde[2]
+        rhoPhiLM = 2/tau*(1-log( (yT + alphaTildeLM/phiTildeLM)/(y0 + alphaTildeLM/phiTildeLM) )/(tau*phiTildeLM) )
+        coefMLM[m,] = coefLMTilde*(1-tau*rhoPhiLM/2)
+        
+        coefLMNaiveTilde = coefMLMNaive[m,]
+        alphaTildeLMNaive = coefLMNaiveTilde[1]
+        phiTildeLMNaive = coefLMNaiveTilde[2]
+        rhoPhiLMNaive = 2/tau*(1-log( (yT + alphaTildeLMNaive/phiTildeLMNaive)/(y0 + alphaTildeLMNaive/phiTildeLMNaive) )/(tau*phiTildeLMNaive) )
+        coefMLMNaive[m,] = coefLMNaiveTilde*(1-tau*rhoPhiLMNaive/2)
+        
+        coefIVTilde = coefMIV[m,]
+        alphaTildeIV = coefIVTilde[1]
+        phiTildeIV = coefIVTilde[2]
+        rhoPhiIV = 2/tau*(1-log( (yT + alphaTildeIV/phiTildeIV)/(y0 + alphaTildeIV/phiTildeIV) )/(tau*phiTildeIV) )
+        coefMIV[m,] = coefIVTilde*(1-tau*rhoPhiIV/2)
+        
+        # coefficient notTilde by resampling for LL
+        y0 = mean(y0yT[i,,1])
+        yT = mean(y0yT[i,,2])
+        
+        coefLLTilde = mvrnorm(n=1,mu=coefLL,Sigma=covBeta)
+        alphaTildeLL = coefLLTilde[1]
+        phiTildeLL = coefLLTilde[2]
+        rhoPhiLL = 2/tau*(1-log( (yT + alphaTildeLL/phiTildeLL)/(y0 + alphaTildeLL/phiTildeLL) )/(tau*phiTildeLL) )
+        coefMNpLLBoot[i,m,] = coefLLTilde*(1-tau*rhoPhiLL/2)
+    }
+    coefMLL = coefMNpLLBoot[i,,]
     
-    coefNpLM[i,] = apply(errRelLM,MARGIN=2,FUN=function(x) mean(x))
-    lowerNpLM[i,] = apply(errRelLM,MARGIN=2,FUN=function(x) quantile(x,0.05))
-    upperNpLM[i,] = apply(errRelLM,MARGIN=2,FUN=function(x) quantile(x,0.95))
-    seNpLM[i,] = apply(coefMLM,MARGIN=2,FUN=function(x) sd(x))
+    errRelLM = (coefMLM-coefRep)/coefRep
+    errRelLMNaive = (coefMLMNaive-coefRep)/coefRep
+    errRelIV = (coefMIV-coefRep)/coefRep
+    errRelLL = (coefMLL-coefRep)/coefRep
     
-    coefNpLMNaive[i,] = apply(errRelLMNaive,MARGIN=2,FUN=function(x) mean(x))
-    lowerNpLMNaive[i,] = apply(errRelLMNaive,MARGIN=2,FUN=function(x) quantile(x,0.05))
-    upperNpLMNaive[i,] = apply(errRelLMNaive,MARGIN=2,FUN=function(x) quantile(x,0.95))
-    seNpLMNaive[i,] = apply(coefMLMNaive,MARGIN=2,FUN=function(x) sd(x))
+    coefNpLM[i,] = apply(errRelLM,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+    lowerNpLM[i,] = apply(errRelLM,MARGIN=2,FUN=function(x) quantile(x,0.05,na.rm=T))
+    upperNpLM[i,] = apply(errRelLM,MARGIN=2,FUN=function(x) quantile(x,0.95,na.rm=T))
+    seNpLM[i,] = apply(coefMLM,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
     
-    coefNpIV[i,] = apply(errRelIV,MARGIN=2,FUN=function(x) mean(x))
-    lowerNpIV[i,] = apply(errRelIV,MARGIN=2,FUN=function(x) quantile(x,0.05))
-    upperNpIV[i,] = apply(errRelIV,MARGIN=2,FUN=function(x) quantile(x,0.95))
-    seNpIV[i,] = apply(coefMIV,MARGIN=2,FUN=function(x) sd(x))
+    coefNpLMNaive[i,] = apply(errRelLMNaive,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+    lowerNpLMNaive[i,] = apply(errRelLMNaive,MARGIN=2,FUN=function(x) quantile(x,0.05,na.rm=T))
+    upperNpLMNaive[i,] = apply(errRelLMNaive,MARGIN=2,FUN=function(x) quantile(x,0.95,na.rm=T))
+    seNpLMNaive[i,] = apply(coefMLMNaive,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
+    
+    coefNpIV[i,] = apply(errRelIV,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+    lowerNpIV[i,] = apply(errRelIV,MARGIN=2,FUN=function(x) quantile(x,0.05,na.rm=T))
+    upperNpIV[i,] = apply(errRelIV,MARGIN=2,FUN=function(x) quantile(x,0.95,na.rm=T))
+    seNpIV[i,] = apply(coefMIV,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
+    
+    coefNpLL[i,] = apply(errRelLL,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+    lowerNpLL[i,] = apply(errRelLL,MARGIN=2,FUN=function(x) quantile(x,0.05,na.rm=T))
+    upperNpLL[i,] = apply(errRelLL,MARGIN=2,FUN=function(x) quantile(x,0.95,na.rm=T))
+    seNpLL[i,] = apply(coefMLL,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
+    
+
 }
+maxExp = 0
+f <- function(x) { return (sign(x)*(log10(1+abs(x)/(10^maxExp)))) }
+coefNpLM = apply(coefNpLM,MARGIN=c(1,2),FUN=f)
+lowerNpLM = apply(lowerNpLM,MARGIN=c(1,2),FUN=f)
+upperNpLM = apply(upperNpLM,MARGIN=c(1,2),FUN=f)
+coefNpLMNaive = apply(coefNpLMNaive,MARGIN=c(1,2),FUN=f)
+lowerNpLMNaive = apply(lowerNpLMNaive,MARGIN=c(1,2),FUN=f)
+upperNpLMNaive = apply(upperNpLMNaive,MARGIN=c(1,2),FUN=f)
+coefNpIV = apply(coefNpIV,MARGIN=c(1,2),FUN=f)
+lowerNpIV = apply(lowerNpIV,MARGIN=c(1,2),FUN=f)
+upperNpIV = apply(upperNpIV,MARGIN=c(1,2),FUN=f)
+coefNpLL = apply(coefNpLL,MARGIN=c(1,2),FUN=f)
+lowerNpLL = apply(lowerNpLL,MARGIN=c(1,2),FUN=f)
+upperNpLL = apply(upperNpLL,MARGIN=c(1,2),FUN=f)
 
-### plot ----
-
-coefNpLM = coefNpLM[1:(length(Np)-1),]
-lowerNpLM = lowerNpLM[1:(length(Np)-1),]
-upperNpLM = upperNpLM[1:(length(Np)-1),]
-coefNpLMNaive = coefNpLMNaive[1:(length(Np)-1),]
-lowerNpLMNaive = lowerNpLMNaive[1:(length(Np)-1),]
-upperNpLMNaive = upperNpLMNaive[1:(length(Np)-1),]
-coefNpIV = coefNpIV[1:(length(Np)-1),]
-lowerNpIV = lowerNpIV[1:(length(Np)-1),]
-upperNpIV = upperNpIV[1:(length(Np)-1),]
-coefNpLLRel = coefNpLLRel[1:(length(Np)-1),]
-coefNpLLSeRel = coefNpLLSeRel[1:(length(Np)-1),]
-Np = Np[1:(length(Np)-1)]
+## plot ----
+DeltaX = 1/sqrt(Np)
+dev.new()
+plot(DeltaX,coefNpLM[,1],type="b",pch=1,ylab="",xlab="",xaxt = "n",lwd=1.5,ylim=range(coefNpLM[,1],lowerNpLM[,1],upperNpLM[,1],coefNpLMNaive[,1],lowerNpLMNaive[,1],upperNpLMNaive[,1],coefNpIV[,1],lowerNpIV[,1],upperNpIV[,1],coefNpLL[,1],lowerNpLL[,1],upperNpLL[,1]))
+lines(DeltaX,lowerNpLM[,1],lty="dotted",col="black",xaxt="n")
+lines(DeltaX,upperNpLM[,1],lty="dotted",col="black",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLM[,1],rev(upperNpLM[,1])), col = adjustcolor("black", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpLMNaive[,1],col="red",xaxt="n",type="b",pch=2,lwd=1.5)
+lines(DeltaX,upperNpLMNaive[,1],lty="dotted",col="red",xaxt="n")
+lines(DeltaX,lowerNpLMNaive[,1],lty="dotted",col="red",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLMNaive[,1],rev(upperNpLMNaive[,1])), col = adjustcolor("red", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpIV[,1],col="blue",xaxt="n",type="b",pch=3,lwd=1.5)
+lines(DeltaX,upperNpIV[,1],lty="dotted",col="blue",xaxt="n")
+lines(DeltaX,lowerNpIV[,1],lty="dotted",col="blue",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpIV[,1],rev(upperNpIV[,1])), col = adjustcolor("blue", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpLL[,1],col="purple",xaxt="n",type="b",pch=4,lwd=1.5)
+lines(DeltaX,lowerNpLL[,1],lty="dotted",col="purple",xaxt="n")
+lines(DeltaX,upperNpLL[,1],lty="dotted",col="purple",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLL[,1],rev(upperNpLL[,1])), col = adjustcolor("purple", alpha.f=0.1) , lty = 0)
+mapply(axis, side = 1, at = DeltaX, labels = paste(c("(WORST)\n","","","","(A) "), round(DeltaX,digits=3)," \n (N = ",Np ,")",sep=""),las = 3, adj=0.5, cex.axis=1)
+abline(h=0)
+grid()
+title(ylab = TeX(r'(${(\hat{\alpha} - \alpha)/{\alpha}}$ (Symmetric $\log_{10}$ scale) )'),mgp=c(2,0,0))
+title(xlab = TeX(r'(                                                                                                                                       $\frac{1}{\sqrt{N}}$)'),mgp=c(0.5,0,0))
+legend("topright",legend=c("OLS NAIVE","OLS","IV","ML"),col=c("red","black","blue","purple"),lty=1,lwd=1.5,cex=1.0,pch=c(2,1,3,4))
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRel_alpha.pdf")
 
 dev.new()
-plot(Np,coefNpLM[,1],type="l",ylab = TeX("Relative error $\\gamma_A$"), xaxt = "n",ylim=range(coefNpLM[,1],lowerNpLM[,1],upperNpLM[,1],coefNpLMNaive[,1],lowerNpLMNaive[,1],upperNpLMNaive[,1],coefNpIV[,1],lowerNpIV[,1],upperNpIV[,1],coefNpLLRel[,1]))
-lines(Np,lowerNpLM[,1],lty="dashed",col="black",xaxt="n")
-lines(Np,upperNpLM[,1],lty="dashed",col="black",xaxt="n")
-lines(Np,coefNpLMNaive[,1],col="red",xaxt="n")
-lines(Np,upperNpLMNaive[,1],lty="dashed",col="red",xaxt="n")
-lines(Np,lowerNpLMNaive[,1],lty="dashed",col="red",xaxt="n")
-lines(Np,coefNpIV[,1],col="blue",xaxt="n")
-lines(Np,upperNpIV[,1],lty="dashed",col="blue",xaxt="n")
-lines(Np,lowerNpIV[,1],lty="dashed",col="blue",xaxt="n")
-lines(Np,coefNpLLRel[,1],col="purple",xaxt="n")
-lines(Np,coefNpLLRel[,1]+qnorm(0.95)*coefNpLLSeRel[,1],lty="dashed",col="purple",xaxt="n")
-lines(Np,coefNpLLRel[,1]-qnorm(0.95)*coefNpLLSeRel[,1],lty="dashed",col="purple",xaxt="n")
-axis(1, at = Np)
-grid()
+plot(DeltaX,coefNpLM[,2],type="b",pch=1,ylab="",xlab="",xaxt = "n",lwd=1.5,ylim=range(coefNpLM[,2],lowerNpLM[,2],upperNpLM[,2],coefNpLMNaive[,2],lowerNpLMNaive[,2],upperNpLMNaive[,2],coefNpIV[,2],lowerNpIV[,2],upperNpIV[,2],coefNpLL[,2],lowerNpLL[,2],upperNpLL[,2]))
+lines(DeltaX,lowerNpLM[,2],lty="dotted",col="black",xaxt="n")
+lines(DeltaX,upperNpLM[,2],lty="dotted",col="black",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLM[,2],rev(upperNpLM[,2])), col = adjustcolor("black", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpLMNaive[,2],col="red",xaxt="n",type="b",pch=2,lwd=1.5)
+lines(DeltaX,upperNpLMNaive[,2],lty="dotted",col="red",xaxt="n")
+lines(DeltaX,lowerNpLMNaive[,2],lty="dotted",col="red",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLMNaive[,2],rev(upperNpLMNaive[,2])), col = adjustcolor("red", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpIV[,2],col="blue",xaxt="n",type="b",pch=3,lwd=1.5)
+lines(DeltaX,upperNpIV[,2],lty="dotted",col="blue",xaxt="n")
+lines(DeltaX,lowerNpIV[,2],lty="dotted",col="blue",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpIV[,2],rev(upperNpIV[,2])), col = adjustcolor("blue", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpLL[,2],col="purple",xaxt="n",type="b",pch=4,lwd=1.5)
+lines(DeltaX,lowerNpLL[,2],lty="dotted",col="purple",xaxt="n")
+lines(DeltaX,upperNpLL[,2],lty="dotted",col="purple",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLL[,2],rev(upperNpLL[,2])), col = adjustcolor("purple", alpha.f=0.1) , lty = 0)
+mapply(axis, side = 1, at = DeltaX, labels = paste(c("(WORST)\n","","","","(A) "), round(DeltaX,digits=3)," \n (N = ",Np ,")",sep=""),las = 3, adj=0.5, cex.axis=1)
 abline(h=0)
-# legend(locator(1),legend=c("OLS","OLS NAIVE","Instrumental Variable","Maximum Likelihood"),col=c("black","red","blue","purple"),lty=1,cex=1.0)
-legend("topleft",legend=c("OLS","OLS NAIVE","Instrumental Variable","Maximum Likelihood"),col=c("black","red","blue","purple"),lty=1,cex=1.0)
-dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRelGammaA.pdf")
+grid()
+title(ylab = TeX(r'(${(\hat{\varphi} - \varphi)/{\varphi}}$ (Symmetric $\log_{10}$ scale) )'),mgp=c(2,0,0))
+title(xlab = TeX(r'(                                                                                                                                       $\frac{1}{\sqrt{N}}$)'),mgp=c(0.5,0,0))
+legend("topright",legend=c("OLS NAIVE","OLS","IV","ML"),col=c("red","black","blue","purple"),lty=1,lwd=1.5,cex=1.0,pch=c(2,1,3,4))
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRel_phi.pdf")
 
 dev.new()
-plot(Np,coefNpLM[,2],type="l",ylab = TeX("Relative error $\\gamma_R$"), xaxt = "n",ylim=range(coefNpLM[,2],lowerNpLM[,2],upperNpLM[,2],coefNpLMNaive[,2],lowerNpLMNaive[,2],upperNpLMNaive[,2],coefNpIV[,2],lowerNpIV[,2],upperNpIV[,2],coefNpLLRel[,2]))
-lines(Np,lowerNpLM[,2],lty="dashed",col="black",xaxt="n")
-lines(Np,upperNpLM[,2],lty="dashed",col="black",xaxt="n")
-lines(Np,coefNpLMNaive[,2],col="red",xaxt="n")
-lines(Np,lowerNpLMNaive[,2],lty="dashed",col="red",xaxt="n")
-lines(Np,upperNpLMNaive[,2],lty="dashed",col="red",xaxt="n")
-lines(Np,coefNpIV[,2],col="blue",xaxt="n")
-lines(Np,upperNpIV[,2],lty="dashed",col="blue",xaxt="n")
-lines(Np,lowerNpIV[,2],lty="dashed",col="blue",xaxt="n")
-lines(Np,coefNpLLRel[,2],col="purple",xaxt="n")
-lines(Np,coefNpLLRel[,2]+qnorm(0.95)*coefNpLLSeRel[,2],lty="dashed",col="purple",xaxt="n")
-lines(Np,coefNpLLRel[,2]-qnorm(0.95)*coefNpLLSeRel[,2],lty="dashed",col="purple",xaxt="n")
-axis(1, at = Np)
-grid()
+plot(DeltaX,coefNpLM[,3],type="b",pch=1,ylab="",xlab="",xaxt = "n",lwd=1.5,ylim=range(coefNpLM[,3],lowerNpLM[,3],upperNpLM[,3],coefNpLMNaive[,3],lowerNpLMNaive[,3],upperNpLMNaive[,3],coefNpIV[,3],lowerNpIV[,3],upperNpIV[,3],coefNpLL[,3],lowerNpLL[,3],upperNpLL[,3]))
+lines(DeltaX,lowerNpLM[,3],lty="dotted",col="black",xaxt="n")
+lines(DeltaX,upperNpLM[,3],lty="dotted",col="black",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLM[,3],rev(upperNpLM[,3])), col = adjustcolor("black", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpLMNaive[,3],col="red",xaxt="n",type="b",pch=2,lwd=1.5)
+lines(DeltaX,upperNpLMNaive[,3],lty="dotted",col="red",xaxt="n")
+lines(DeltaX,lowerNpLMNaive[,3],lty="dotted",col="red",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLMNaive[,3],rev(upperNpLMNaive[,3])), col = adjustcolor("red", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpIV[,3],col="blue",xaxt="n",type="b",pch=3,lwd=1.5)
+lines(DeltaX,upperNpIV[,3],lty="dotted",col="blue",xaxt="n")
+lines(DeltaX,lowerNpIV[,3],lty="dotted",col="blue",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpIV[,3],rev(upperNpIV[,3])), col = adjustcolor("blue", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpLL[,3],col="purple",xaxt="n",type="b",pch=4,lwd=1.5)
+lines(DeltaX,lowerNpLL[,3],lty="dotted",col="purple",xaxt="n")
+lines(DeltaX,upperNpLL[,3],lty="dotted",col="purple",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLL[,3],rev(upperNpLL[,3])), col = adjustcolor("purple", alpha.f=0.1) , lty = 0)
+mapply(axis, side = 1, at = DeltaX, labels = paste(c("(WORST)\n","","","","(A) "), round(DeltaX,digits=3)," \n (N = ",Np ,")",sep=""),las = 3, adj=0.5, cex.axis=1)
 abline(h=0)
-# legend(locator(1),legend=c("LM","LM Naive","IV","LL"),col=c("black","red","blue","purple"),lty=1,cex=1.0)
-legend("topleft",legend=c("OLS","OLS NAIVE","Instrumental Variable","Maximum Likelihood"),col=c("black","red","blue","purple"),lty=1,cex=1.0, ncol=4)
-dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRelGammaR.pdf")
+grid()
+title(ylab = TeX(r'(${(\hat{\gamma}_A - \gamma_A)/{\gamma_A}}$ (Symmetric $\log_{10}$ scale) )'),mgp=c(2,0,0))
+title(xlab = TeX(r'(                                                                                                                                       $\frac{1}{\sqrt{N}}$)'),mgp=c(0.5,0,0))
+legend("topright",legend=c("OLS NAIVE","OLS","IV","ML"),col=c("red","black","blue","purple"),lty=1,lwd=1.5,cex=1.0,pch=c(2,1,3,4))
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRel_gammaA.pdf")
 
 dev.new()
-plot(Np,coefNpLM[,3],type="l",ylab = TeX("Relative error $\\gamma_D$"), xaxt = "n",ylim=range(coefNpLM[,3],lowerNpLM[,3],upperNpLM[,3],coefNpLMNaive[,3],lowerNpLMNaive[,3],upperNpLMNaive[,3],coefNpIV[,3],lowerNpIV[,3],upperNpIV[,3],coefNpLLRel[,3]))
-lines(Np,lowerNpLM[,3],lty="dashed",col="black",xaxt="n")
-lines(Np,upperNpLM[,3],lty="dashed",col="black",xaxt="n")
-lines(Np,coefNpLMNaive[,3],col="red",xaxt="n")
-lines(Np,lowerNpLMNaive[,3],lty="dashed",col="red",xaxt="n")
-lines(Np,upperNpLMNaive[,3],lty="dashed",col="red",xaxt="n")
-lines(Np,coefNpIV[,3],col="blue",xaxt="n")
-lines(Np,lowerNpIV[,3],lty="dashed",col="blue",xaxt="n")
-lines(Np,upperNpIV[,3],lty="dashed",col="blue",xaxt="n")
-lines(Np,coefNpLLRel[,3],col="purple",xaxt="n")
-lines(Np,coefNpLLRel[,3]+qnorm(0.95)*coefNpLLSeRel[,3],lty="dashed",col="purple",xaxt="n")
-lines(Np,coefNpLLRel[,3]-qnorm(0.95)*coefNpLLSeRel[,3],lty="dashed",col="purple",xaxt="n")
-axis(1, at = Np)
-grid()
+plot(DeltaX,coefNpLM[,4],type="b",pch=1,ylab="",xlab="",xaxt = "n",lwd=1.5,ylim=range(coefNpLM[,4],lowerNpLM[,4],upperNpLM[,4],coefNpLMNaive[,4],lowerNpLMNaive[,4],upperNpLMNaive[,4],coefNpIV[,4],lowerNpIV[,4],upperNpIV[,4],coefNpLL[,4],lowerNpLL[,4],upperNpLL[,4]))
+lines(DeltaX,lowerNpLM[,4],lty="dotted",col="black",xaxt="n")
+lines(DeltaX,upperNpLM[,4],lty="dotted",col="black",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLM[,4],rev(upperNpLM[,4])), col = adjustcolor("black", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpLMNaive[,4],col="red",xaxt="n",type="b",pch=2,lwd=1.5)
+lines(DeltaX,upperNpLMNaive[,4],lty="dotted",col="red",xaxt="n")
+lines(DeltaX,lowerNpLMNaive[,4],lty="dotted",col="red",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLMNaive[,4],rev(upperNpLMNaive[,4])), col = adjustcolor("red", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpIV[,4],col="blue",xaxt="n",type="b",pch=3,lwd=1.5)
+lines(DeltaX,upperNpIV[,4],lty="dotted",col="blue",xaxt="n")
+lines(DeltaX,lowerNpIV[,4],lty="dotted",col="blue",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpIV[,4],rev(upperNpIV[,4])), col = adjustcolor("blue", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpLL[,4],col="purple",xaxt="n",type="b",pch=4,lwd=1.5)
+lines(DeltaX,lowerNpLL[,4],lty="dotted",col="purple",xaxt="n")
+lines(DeltaX,upperNpLL[,4],lty="dotted",col="purple",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLL[,4],rev(upperNpLL[,4])), col = adjustcolor("purple", alpha.f=0.1) , lty = 0)
+mapply(axis, side = 1, at = DeltaX, labels = paste(c("(WORST)\n","","","","(A) "), round(DeltaX,digits=3)," \n (N = ",Np ,")",sep=""),las = 3, adj=0.5, cex.axis=1)
 abline(h=0)
-# legend(locator(1),legend=c("LM","LM Naive","IV","LL"),col=c("black","red","blue","purple"),lty=1,cex=1.0)
-legend("topleft",legend=c("OLS","OLS NAIVE","Instrumental Variable","Maximum Likelihood"),col=c("black","red","blue","purple"),lty=1,cex=1.0, ncol=4)
-dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRelGammaD.pdf")
+grid()
+title(ylab = TeX(r'(${(\hat{\gamma}_R - \gamma_R)/{\gamma_R}}$ (Symmetric $\log_{10}$ scale) )'),mgp=c(2,0,0))
+title(xlab = TeX(r'(                                                                                                                                       $\frac{1}{\sqrt{N}}$)'),mgp=c(0.5,0,0))
+legend("topright",legend=c("OLS NAIVE","OLS","IV","ML"),col=c("red","black","blue","purple"),lty=1,lwd=1.5,cex=1.0,pch=c(2,1,3,4))
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRel_gammaR.pdf")
+
+dev.new()
+plot(DeltaX,coefNpLM[,5],type="b",pch=1,ylab="",xlab="",xaxt = "n",lwd=1.5,ylim=range(coefNpLM[,5],lowerNpLM[,5],upperNpLM[,5],coefNpLMNaive[,5],lowerNpLMNaive[,5],upperNpLMNaive[,5],coefNpIV[,5],lowerNpIV[,5],upperNpIV[,5],coefNpLL[,5],lowerNpLL[,5],upperNpLL[,5]))
+lines(DeltaX,lowerNpLM[,5],lty="dotted",col="black",xaxt="n")
+lines(DeltaX,upperNpLM[,5],lty="dotted",col="black",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLM[,5],rev(upperNpLM[,5])), col = adjustcolor("black", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpLMNaive[,5],col="red",xaxt="n",type="b",pch=2,lwd=1.5)
+lines(DeltaX,upperNpLMNaive[,5],lty="dotted",col="red",xaxt="n")
+lines(DeltaX,lowerNpLMNaive[,5],lty="dotted",col="red",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLMNaive[,5],rev(upperNpLMNaive[,5])), col = adjustcolor("red", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpIV[,5],col="blue",xaxt="n",type="b",pch=3,lwd=1.5)
+lines(DeltaX,upperNpIV[,5],lty="dotted",col="blue",xaxt="n")
+lines(DeltaX,lowerNpIV[,5],lty="dotted",col="blue",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpIV[,5],rev(upperNpIV[,5])), col = adjustcolor("blue", alpha.f=0.1) , lty = 0)
+lines(DeltaX,coefNpLL[,5],col="purple",xaxt="n",type="b",pch=4,lwd=1.5)
+lines(DeltaX,lowerNpLL[,5],lty="dotted",col="purple",xaxt="n")
+lines(DeltaX,upperNpLL[,5],lty="dotted",col="purple",xaxt="n")
+polygon(c(DeltaX, rev(DeltaX)), c(lowerNpLL[,5],rev(upperNpLL[,5])), col = adjustcolor("purple", alpha.f=0.1) , lty = 0)
+mapply(axis, side = 1, at = DeltaX, labels = paste(c("(WORST)\n","","","","(A) "), round(DeltaX,digits=3)," \n (N = ",Np ,")",sep=""),las = 3, adj=0.5, cex.axis=1)
+abline(h=0)
+grid()
+title(ylab = TeX(r'(${(\hat{\gamma}_D - \gamma_D)/{\gamma_D}}$ (Symmetric $\log_{10}$ scale) )'),mgp=c(2,0,0))
+title(xlab = TeX(r'(                                                                                                                                       $\frac{1}{\sqrt{N}}$)'),mgp=c(0.5,0,0))
+legend("topright",legend=c("OLS NAIVE","OLS","IV","ML"),col=c("red","black","blue","purple"),lty=1,lwd=1.5,cex=1.0,pch=c(2,1,3,4))
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRel_gammaD.pdf")
 
 
-
-# montecarlo analysis ----
-load("../datasets_montecarlo/resultMC225.RData")
-load("../datasets_montecarlo/resultMC1156.RData")
-load("../datasets_montecarlo/resultMC289.RData")
-load("../datasets_montecarlo/resultPDE225.RData")
-load("../datasets_montecarlo/resultPDE1156.RData")
-load("../datasets_montecarlo/resultPDE289.RData")
-
-## 2500 Result ----
-load("../datasets_montecarlo/DataShpRegressors2500.RData")
-estimatePDE2500_LM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
-estimatePDE2500_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
-estimatePDE2500_IV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
-
-table2500 = matrix(data = NA, nrow = 3, ncol = 2*4)
-rownames(table2500) = c("gammaA","gammaR","gammaD")
-colnames(table2500) = c("PDE_LMNaive","seMC_LMNaive",
-                        "PDE_LM","seMC_LM",
-                        "PDE_IV","seMC_IV",
-                        "PDE_LL","seMC_LL")
-
-table2500[,"PDE_LMNaive"] = coef(estimatePDE2500_LM_NAIVE)[c(1,2,3)]
-table2500[,"seMC_LMNaive"] = seNpLMNaive[which(Np==2500),] 
-
-table2500[,"PDE_LM"] = coef(estimatePDE2500_LM)[c(1,3,5)]
-table2500[,"seMC_LM"] = seNpLM[which(Np==2500),] 
-
-table2500[,"PDE_IV"] = coef(estimatePDE2500_IV)[c(1,2,3)]
-table2500[,"seMC_IV"] = seNpIV[which(Np==2500),] 
-
-table2500[,"PDE_LL"] = estimateNpLL[[which(Np==2500)]]$outARD_3MatEstimate$coef[c(1,2,3)]
-table2500[,"seMC_LL"] = estimateNpLL[[which(Np==2500)]]$outARD_3MatEstimate$se_coef[c(1,2,3)]
-
-# colnames(table2500) = sapply(colnames(table2500),FUN=function(x) return(paste(x,"2500",sep="")))
-
-## output in xtable
-table2500 = rbind(table2500[,1:4],table2500[,5:8],table2500[,9:12])
-
-xtable(table225,auto=TRUE)
-xtable(table576,auto=TRUE)
-xtable(table289,auto=TRUE)
-xtable(tableAll,auto=TRUE)
-xtable(tableAll,display=rep("f",ncol(tableAll)+1))
-
-
-## table All sorted by estimation method ----
-tableLM225 = t(table225[,1:4])
-tableLM576 = t(table576[,1:4])
-tableLM289 = t(table289[,1:4])
-
-tableLM_gammaA = cbind(tableLM225[,colnames(tableLM225)=="gammaA"],
-                       tableLM576[,colnames(tableLM576)=="gammaA"],
-                       tableLM289[,colnames(tableLM289)=="gammaA"])
-colnames(tableLM_gammaA) = c("225", "576", "289")
-
-tableLM_gammaR = cbind(tableLM225[,colnames(tableLM225)=="gammaR"],
-                       tableLM576[,colnames(tableLM576)=="gammaR"],
-                       tableLM289[,colnames(tableLM289)=="gammaR"])
-colnames(tableLM_gammaR) = c("225", "576", "289")
-
-tableLM_gammaD = cbind(tableLM225[,colnames(tableLM225)=="gammaD"],
-                       tableLM576[,colnames(tableLM576)=="gammaD"],
-                       tableLM289[,colnames(tableLM289)=="gammaD"])
-colnames(tableLM_gammaD) = c("225", "576", "289")
-
-table_LM = cbind(tableLM_gammaA, tableLM_gammaR, tableLM_gammaD)
-xtable(table_LM, digits=5)
-
-
-tableIV225 = t(table225[,5:8])
-tableIV576 = t(table576[,5:8])
-tableIV289 = t(table289[,5:8])
-
-tableIV_gammaA = cbind(tableIV225[,colnames(tableIV225)=="gammaA"],
-                       tableIV576[,colnames(tableIV576)=="gammaA"],
-                       tableIV289[,colnames(tableIV289)=="gammaA"])
-colnames(tableIV_gammaA) = c("225", "576", "289")
-
-tableIV_gammaR = cbind(tableIV225[,colnames(tableIV225)=="gammaR"],
-                       tableIV576[,colnames(tableIV576)=="gammaR"],
-                       tableIV289[,colnames(tableIV289)=="gammaR"])
-colnames(tableIV_gammaR) = c("225", "576", "289")
-
-tableIV_gammaD = cbind(tableIV225[,colnames(tableIV225)=="gammaD"],
-                       tableIV576[,colnames(tableIV576)=="gammaD"],
-                       tableIV289[,colnames(tableIV289)=="gammaD"])
-colnames(tableIV_gammaD) = c("225", "576", "289")
-
-table_IV = cbind(tableIV_gammaA, tableIV_gammaR, tableIV_gammaD)
-xtable(table_IV, digits=5)
-
-tableLL225 = t(table225[,9:12])
-tableLL576 = t(table576[,9:12])
-tableLL289 = t(table289[,9:12])
-
-tableLL_gammaA = cbind(tableLL225[,colnames(tableLL225)=="gammaA"],
-                       tableLL576[,colnames(tableLL576)=="gammaA"],
-                       tableLL289[,colnames(tableLL289)=="gammaA"])
-colnames(tableLL_gammaA) = c("225", "576", "289")
-
-tableLL_gammaR = cbind(tableLL225[,colnames(tableLL225)=="gammaR"],
-                       tableLL576[,colnames(tableLL576)=="gammaR"],
-                       tableLL289[,colnames(tableLL289)=="gammaR"])
-colnames(tableLL_gammaR) = c("225", "576", "289")
-
-tableLL_gammaD = cbind(tableLL225[,colnames(tableLL225)=="gammaD"],
-                       tableLL576[,colnames(tableLL576)=="gammaD"],
-                       tableLL289[,colnames(tableLL289)=="gammaD"])
-colnames(tableLL_gammaD) = c("225", "576", "289")
-
-table_LL = cbind(tableLL_gammaA, tableLL_gammaR, tableLL_gammaD)
-xtable(table_LL, digits=5)
-
-
-# ---- MC finto with bootstrap
-load("../datasets_montecarlo/DataShpRegressors576.RData")
-MADelta = as.numeric(MA %*% matrix(data$delta))
-MRDelta = as.numeric(MR %*% matrix(data$delta))
-MDDelta = as.numeric(MD %*% matrix(data$delta))
-
+# montecarlo PDE different Tau ----
+Np = 144
+TauAll = c(0.1,0.25,0.5,0.75,1.0)
 Nm = 1000
-coefM = matrix(data=NA,nrow=Nm,ncol=3)
-for (m in 1:Nm){
-    print(m)
+coefMTauLMNaive = array(data=NA,dim=c(length(TauAll),Nm,5))
+coefMTauLM = array(data=NA,dim=c(length(TauAll),Nm,5))
+coefMTauIV = array(data=NA,dim=c(length(TauAll),Nm,5))
+coefTauLL = matrix(data=NA,nrow=length(TauAll),ncol=5)
+estimateTauLL = list()
+AICR2LMNaive = matrix(data = NA, nrow = length(TauAll), ncol = 2); colnames(AICR2LMNaive) = c("AICc","R2")
+AICR2LM = matrix(data = NA, nrow = length(TauAll), ncol = 2); colnames(AICR2LM) = c("AICc","R2")
+AICR2IV = matrix(data = NA, nrow = length(TauAll), ncol = 2); colnames(AICR2IV) = c("AICc","R2")
+AICR2LL = matrix(data = NA, nrow = length(TauAll), ncol = 2); colnames(AICR2LL) = c("AICc","R2")
+y0yT = array(data=NA,dim=c(length(TauAll),Nm,2)); 
+
+#For s
+NeS = 100
+SComputed = call_julia_computeS(NeS)
+Xs = SComputed$X
+Ys = SComputed$Y
+S = SComputed$S
+
+shpMC = createShape(Np, typeOfDist = "Uniform")
+
+for (i in 1:length(TauAll)){
+    tau = TauAll[i]
+    print(i)
+    print(tau)
     
-    iBoot = sample(1:nrow(datam),replace=T)
+    PDEAll = call_julia_computePDE(tau,SARDp)
+    Xpde = PDEAll$X
+    Ypde = PDEAll$Y
+    PDE0 = PDEAll$PDE0
+    PDET = PDEAll$PDET
+    
+    data_shp = createDataframePDE(PDE0, PDET, Xpde, Ypde, shpMC, tau, Xs, Ys, S)
+    data = data_shp$data
+    shp = data_shp$shp_sf
+    
+    MsDeriv = GFDM(data,torus=TRUE)
+    D = compute_D(data,longlat=FALSE,torus=TRUE)
+    WhA = compute_WhAR(D,data,SARDp$hA)
+    WhR = compute_WhAR(D,data,SARDp$hR)
+    xA = compute_xAR(data,MsDeriv, WhA)
+    xR = compute_xAR(data,MsDeriv, WhR)
+    xD = compute_xD(data,MsDeriv)
+    MA = compute_MARLag(data,MsDeriv,WhA)
+    MR = compute_MARLag(data,MsDeriv,WhR)
+    MD = compute_MDLag(MsDeriv)
+    
+    MADelta = as.numeric(MA %*% matrix(data$delta))
+    MRDelta = as.numeric(MR %*% matrix(data$delta))
+    MDDelta = as.numeric(MD %*% matrix(data$delta))
+    
+    X = data.frame(xA=xA,xR=xR,xD=xD)
+    X = as.matrix(X)
+    
+    # instruments for IV
+    MA2X=as.matrix(MA %*% MA %*% X)
+    MR2X=as.matrix(MR %*% MR %*% X) 
+    MD2X=as.matrix(MD %*% MD %*% X)
+    
+    estimateTauLM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
+    AICR2LMNaive[i,] = c(estimateTauLM_NAIVE$AICc,estimateTauLM_NAIVE$R2)
+    
+    estimateTauLM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
+    AICR2LM[i,] = c(estimateTauLM$AICc,estimateTauLM$R2)
+    
+    estimateTauIV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
+    AICR2IV[i,] = c(estimateTauIV$AICc,estimateTauIV$R2)
+    
+    estimateTauLL[[i]] = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
+    AICR2LL[i,] = c(estimateTauLL[[i]]$AICc,estimateTauLL[[i]]$R2)
+    coefTauLL[i,] = estimateTauLL[[i]]$outARD_3MatEstimate$coef[c(1,2,3,4,5)]
+    
+    for (m in 1:Nm){
+        # print(m)
+        
+        iBoot = sample(1:nrow(data),replace=T)
+        datam = data[iBoot,]
+        xAm = xA[iBoot]
+        xRm = xR[iBoot]
+        xDm = xD[iBoot]
+        MADeltam = MADelta[iBoot]
+        MRDeltam = MRDelta[iBoot]
+        MDDeltam = MDDelta[iBoot]
+        MA2Xm=MA2X[iBoot,]
+        MR2Xm=MR2X[iBoot,]
+        MD2Xm=MD2X[iBoot,]
+        y0yT[i,m,1] = sum(datam$y0)*1/Np
+        y0yT[i,m,2] = sum(datam$yT)*1/Np
+        
+        
+        estimatePDE_LMNaivem = estimate_ARD_MC_LM_NAIVEBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
+        coefMTauLMNaive[i,m,] = estimatePDE_LMNaivem$coefficients[c(1,2,3,4,5)]
+        
+        estimatePDE_LMm = estimate_ARD_MC_LMBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
+        coefMTauLM[i,m,] = estimatePDE_LMm$coefficients[c(1,2,3,5,7)]
+        
+        estimatePDE_IVm = estimate_ARD_MC_IVBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam,MA2Xm,MR2Xm,MD2Xm)
+        coefMTauIV[i,m,] = coef(estimatePDE_IVm)[c(1,2,3,4,5)]
+    }
+}
+save(TauAll,coefMTauLM,coefMTauLMNaive,coefMTauIV,coefTauLL,estimateTauLL,AICR2LMNaive,AICR2LM,AICR2IV,AICR2LL,y0yT,file="../datasets_montecarlo/montecarloPDETauGrid.RData")
+
+## robust SE ----
+library(latex2exp)
+load(file="../datasets_montecarlo/montecarloPDETauGrid.RData")
+Nm = dim(coefMTauLM)[2]
+coefRep = matrix(rep(c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD),Nm),nrow=Nm,byrow = T)
+coefTauLM = matrix(data=NA,nrow=length(TauAll),ncol=5)
+lowerTauLM = matrix(data=NA,nrow=length(TauAll),ncol=5)
+upperTauLM = matrix(data=NA,nrow=length(TauAll),ncol=5)
+seTauLM = matrix(data=NA,nrow=length(TauAll),ncol=5)
+coefTauLMNaive = matrix(data=NA,nrow=length(TauAll),ncol=5)
+lowerTauLMNaive = matrix(data=NA,nrow=length(TauAll),ncol=5)
+upperTauLMNaive = matrix(data=NA,nrow=length(TauAll),ncol=5)
+seTauLMNaive = matrix(data=NA,nrow=length(TauAll),ncol=5)
+coefTauIV = matrix(data=NA,nrow=length(TauAll),ncol=5)
+lowerTauIV = matrix(data=NA,nrow=length(TauAll),ncol=5)
+upperTauIV = matrix(data=NA,nrow=length(TauAll),ncol=5)
+seTauIV = matrix(data=NA,nrow=length(TauAll),ncol=5)
+lowerTauLL = matrix(data=NA,nrow=length(TauAll),ncol=5)
+upperTauLL = matrix(data=NA,nrow=length(TauAll),ncol=5)
+seTauLL = matrix(data=NA,nrow=length(TauAll),ncol=5)
+
+# new for nonTilde coefficient LL
+coefMTauLLBoot = array(data=NA,dim=c(length(TauAll),Nm,5))
+
+for (i in 1:length(TauAll)){
+    coefMLM = coefMTauLM[i,,]
+    coefMLMNaive = coefMTauLMNaive[i,,]    
+    coefMIV = coefMTauIV[i,,]   
+    
+    coefLL = coefTauLL[i,]
+    covBeta = estimateTauLL[[i]]$outARD_3MatEstimate$covBeta
+    
+    for (m in 1:Nm) {
+        y0 = y0yT[i,m,1]
+        yT = y0yT[i,m,2]
+        
+        # coefficient notTilde by bootstrap for LM LMNaive and IV
+        coefLMTilde = coefMLM[m,]
+        alphaTildeLM = coefLMTilde[1]
+        phiTildeLM = coefLMTilde[2]
+        rhoPhiLM = 2/tau*(1-log( (yT + alphaTildeLM/phiTildeLM)/(y0 + alphaTildeLM/phiTildeLM) )/(tau*phiTildeLM) )
+        coefMLM[m,] = coefLMTilde*(1-tau*rhoPhiLM/2)
+        
+        coefLMNaiveTilde = coefMLMNaive[m,]
+        alphaTildeLMNaive = coefLMNaiveTilde[1]
+        phiTildeLMNaive = coefLMNaiveTilde[2]
+        rhoPhiLMNaive = 2/tau*(1-log( (yT + alphaTildeLMNaive/phiTildeLMNaive)/(y0 + alphaTildeLMNaive/phiTildeLMNaive) )/(tau*phiTildeLMNaive) )
+        coefMLMNaive[m,] = coefLMNaiveTilde*(1-tau*rhoPhiLMNaive/2)
+        
+        coefIVTilde = coefMIV[m,]
+        alphaTildeIV = coefIVTilde[1]
+        phiTildeIV = coefIVTilde[2]
+        rhoPhiIV = 2/tau*(1-log( (yT + alphaTildeIV/phiTildeIV)/(y0 + alphaTildeIV/phiTildeIV) )/(tau*phiTildeIV) )
+        coefMIV[m,] = coefIVTilde*(1-tau*rhoPhiIV/2)
+        
+        # coefficient notTilde by resampling for LL
+        y0 = mean(y0yT[i,,1])
+        yT = mean(y0yT[i,,2])
+        
+        coefLLTilde = mvrnorm(n=1,mu=coefLL,Sigma=covBeta)
+        alphaTildeLL = coefLLTilde[1]
+        phiTildeLL = coefLLTilde[2]
+        rhoPhiLL = 2/tau*(1-log( (yT + alphaTildeLL/phiTildeLL)/(y0 + alphaTildeLL/phiTildeLL) )/(tau*phiTildeLL) )
+        coefMTauLLBoot[i,m,] = coefLLTilde*(1-tau*rhoPhiLL/2)
+    }
+    coefMLL = coefMTauLLBoot[i,,]
+    
+    errRelLM = (coefMLM-coefRep)/coefRep
+    errRelLMNaive = (coefMLMNaive-coefRep)/coefRep
+    errRelIV = (coefMIV-coefRep)/coefRep
+    errRelLL = (coefMLL-coefRep)/coefRep
+    
+    coefTauLM[i,] = apply(errRelLM,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+    lowerTauLM[i,] = apply(errRelLM,MARGIN=2,FUN=function(x) quantile(x,0.05,na.rm=T))
+    upperTauLM[i,] = apply(errRelLM,MARGIN=2,FUN=function(x) quantile(x,0.95,na.rm=T))
+    seTauLM[i,] = apply(coefMLM,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
+    
+    coefTauLMNaive[i,] = apply(errRelLMNaive,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+    lowerTauLMNaive[i,] = apply(errRelLMNaive,MARGIN=2,FUN=function(x) quantile(x,0.05,na.rm=T))
+    upperTauLMNaive[i,] = apply(errRelLMNaive,MARGIN=2,FUN=function(x) quantile(x,0.95,na.rm=T))
+    seTauLMNaive[i,] = apply(coefMLMNaive,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
+    
+    coefTauIV[i,] = apply(errRelIV,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+    lowerTauIV[i,] = apply(errRelIV,MARGIN=2,FUN=function(x) quantile(x,0.05,na.rm=T))
+    upperTauIV[i,] = apply(errRelIV,MARGIN=2,FUN=function(x) quantile(x,0.95,na.rm=T))
+    seTauIV[i,] = apply(coefMIV,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
+    
+    coefTauLL[i,] = apply(errRelLL,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+    lowerTauLL[i,] = apply(errRelLL,MARGIN=2,FUN=function(x) quantile(x,0.05,na.rm=T))
+    upperTauLL[i,] = apply(errRelLL,MARGIN=2,FUN=function(x) quantile(x,0.95,na.rm=T))
+    seTauLL[i,] = apply(coefMLL,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
+    
+    
+}
+maxExp = 0
+f <- function(x) { return (sign(x)*(log10(1+abs(x)/(10^maxExp)))) }
+
+
+coefTauLM = apply(coefTauLM,MARGIN=c(1,2),FUN=f)
+lowerTauLM = apply(lowerTauLM,MARGIN=c(1,2),FUN=f)
+upperTauLM = apply(upperTauLM,MARGIN=c(1,2),FUN=f)
+coefTauLMNaive = apply(coefTauLMNaive,MARGIN=c(1,2),FUN=f)
+lowerTauLMNaive = apply(lowerTauLMNaive,MARGIN=c(1,2),FUN=f)
+upperTauLMNaive = apply(upperTauLMNaive,MARGIN=c(1,2),FUN=f)
+coefTauIV = apply(coefTauIV,MARGIN=c(1,2),FUN=f)
+lowerTauIV = apply(lowerTauIV,MARGIN=c(1,2),FUN=f)
+upperTauIV = apply(upperTauIV,MARGIN=c(1,2),FUN=f)
+coefTauLL = apply(coefTauLL,MARGIN=c(1,2),FUN=f)
+lowerTauLL = apply(lowerTauLL,MARGIN=c(1,2),FUN=f)
+upperTauLL = apply(upperTauLL,MARGIN=c(1,2),FUN=f)
+
+## plot ----
+
+dev.new()
+plot(TauAll,coefTauLM[,1],type="b",pch=1,ylab="",xlab = TeX(r'($\tau$)'), xaxt = "n",lwd=1.5,ylim=range(coefTauLM[,1],lowerTauLM[,1],upperTauLM[,1],coefTauLMNaive[,1],lowerTauLMNaive[,1],upperTauLMNaive[,1],coefTauIV[,1],lowerTauIV[,1],upperTauIV[,1],coefTauLL[,1],lowerTauLL[,1],upperTauLL[,1]))
+lines(TauAll,lowerTauLM[,1],lty="dotted",col="black",xaxt="n")
+lines(TauAll,upperTauLM[,1],lty="dotted",col="black",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLM[,1],rev(upperTauLM[,1])), col = adjustcolor("black", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauLMNaive[,1],col="red",xaxt="n",type="b",pch=2,lwd=1.5)
+lines(TauAll,upperTauLMNaive[,1],lty="dotted",col="red",xaxt="n")
+lines(TauAll,lowerTauLMNaive[,1],lty="dotted",col="red",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLMNaive[,1],rev(upperTauLMNaive[,1])), col = adjustcolor("red", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauIV[,1],col="blue",xaxt="n",type="b",pch=3,lwd=1.5)
+lines(TauAll,upperTauIV[,1],lty="dotted",col="blue",xaxt="n")
+lines(TauAll,lowerTauIV[,1],lty="dotted",col="blue",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauIV[,1],rev(upperTauIV[,1])), col = adjustcolor("blue", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauLL[,1],col="purple",xaxt="n",type="b",pch=4,lwd=1.5)
+lines(TauAll,lowerTauLL[,1],lty="dotted",col="purple",xaxt="n")
+lines(TauAll,upperTauLL[,1],lty="dotted",col="purple",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLL[,1],rev(upperTauLL[,1])), col = adjustcolor("purple", alpha.f=0.1) , lty = 0)
+axis(1, at = TauAll, label = c("(B) 0.1","0.25","0.50","0.75","(WORST) 1"))
+grid()
+abline(h=0)
+title(ylab = TeX(r'(${(\hat{\alpha} - \alpha)/{\alpha}}$ (Symmetric $\log_{10}$ scale) )'),mgp=c(2,0,0))
+legend("bottomleft",legend=c("OLS NAIVE","OLS","IV","ML"),col=c("red","black","blue","purple"),lty=1,lwd=1.5,cex=1.0,pch=c(2,1,3,4))
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRel_alphaTau.pdf")
+
+dev.new()
+plot(TauAll,coefTauLM[,2],type="b",pch=1,ylab="",xlab = TeX(r'($\tau$)'), xaxt = "n",lwd=1.5,ylim=range(coefTauLM[,2],lowerTauLM[,2],upperTauLM[,2],coefTauLMNaive[,2],lowerTauLMNaive[,2],upperTauLMNaive[,2],coefTauIV[,2],lowerTauIV[,2],upperTauIV[,2],coefTauLL[,2],lowerTauLL[,2],upperTauLL[,2]))
+lines(TauAll,lowerTauLM[,2],lty="dotted",col="black",xaxt="n")
+lines(TauAll,upperTauLM[,2],lty="dotted",col="black",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLM[,2],rev(upperTauLM[,2])), col = adjustcolor("black", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauLMNaive[,2],col="red",xaxt="n",type="b",pch=2,lwd=1.5)
+lines(TauAll,upperTauLMNaive[,2],lty="dotted",col="red",xaxt="n")
+lines(TauAll,lowerTauLMNaive[,2],lty="dotted",col="red",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLMNaive[,2],rev(upperTauLMNaive[,2])), col = adjustcolor("red", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauIV[,2],col="blue",xaxt="n",type="b",pch=3,lwd=1.5)
+lines(TauAll,upperTauIV[,2],lty="dotted",col="blue",xaxt="n")
+lines(TauAll,lowerTauIV[,2],lty="dotted",col="blue",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauIV[,2],rev(upperTauIV[,2])), col = adjustcolor("blue", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauLL[,2],col="purple",xaxt="n",type="b",pch=4,lwd=1.5)
+lines(TauAll,lowerTauLL[,2],lty="dotted",col="purple",xaxt="n")
+lines(TauAll,upperTauLL[,2],lty="dotted",col="purple",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLL[,2],rev(upperTauLL[,2])), col = adjustcolor("purple", alpha.f=0.1) , lty = 0)
+axis(1, at = TauAll, label = c("(B) 0.1","0.25","0.50","0.75","(WORST) 1"))
+grid()
+abline(h=0)
+title(ylab = TeX(r'(${(\hat{\varphi} - \varphi)/{\varphi}}$ (Symmetric $\log_{10}$ scale) )'),mgp=c(2,0,0))
+legend("bottomleft",legend=c("OLS NAIVE","OLS","IV","ML"),col=c("red","black","blue","purple"),lty=1,lwd=1.5,cex=1.0,pch=c(2,1,3,4))
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRel_phiTau.pdf")
+
+dev.new()
+plot(TauAll,coefTauLM[,3],type="b",pch=1,ylab="",xlab = TeX(r'($\tau$)'), xaxt = "n",lwd=1.5,ylim=range(coefTauLM[,3],lowerTauLM[,3],upperTauLM[,3],coefTauLMNaive[,3],lowerTauLMNaive[,3],upperTauLMNaive[,3],coefTauIV[,3],lowerTauIV[,3],upperTauIV[,3],coefTauLL[,3],lowerTauLL[,3],upperTauLL[,3]))
+lines(TauAll,lowerTauLM[,3],lty="dotted",col="black",xaxt="n")
+lines(TauAll,upperTauLM[,3],lty="dotted",col="black",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLM[,3],rev(upperTauLM[,3])), col = adjustcolor("black", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauLMNaive[,3],col="red",xaxt="n",type="b",pch=2,lwd=1.5)
+lines(TauAll,upperTauLMNaive[,3],lty="dotted",col="red",xaxt="n")
+lines(TauAll,lowerTauLMNaive[,3],lty="dotted",col="red",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLMNaive[,3],rev(upperTauLMNaive[,3])), col = adjustcolor("red", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauIV[,3],col="blue",xaxt="n",type="b",pch=3,lwd=1.5)
+lines(TauAll,upperTauIV[,3],lty="dotted",col="blue",xaxt="n")
+lines(TauAll,lowerTauIV[,3],lty="dotted",col="blue",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauIV[,3],rev(upperTauIV[,3])), col = adjustcolor("blue", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauLL[,3],col="purple",xaxt="n",type="b",pch=4,lwd=1.5)
+lines(TauAll,lowerTauLL[,3],lty="dotted",col="purple",xaxt="n")
+lines(TauAll,upperTauLL[,3],lty="dotted",col="purple",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLL[,3],rev(upperTauLL[,3])), col = adjustcolor("purple", alpha.f=0.1) , lty = 0)
+axis(1, at = TauAll, label = c("(B) 0.1","0.25","0.50","0.75","(WORST) 1"))
+grid()
+abline(h=0)
+title(ylab = TeX(r'(${(\hat{\gamma}_A - \gamma_A)/{\gamma_A}}$ (Symmetric $\log_{10}$ scale) )'),mgp=c(2,0,0))
+legend("bottomleft",legend=c("OLS NAIVE","OLS","IV","ML"),col=c("red","black","blue","purple"),lty=1,lwd=1.5,cex=1.0,pch=c(2,1,3,4))
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRel_gammaATau.pdf")
+
+dev.new()
+plot(TauAll,coefTauLM[,4],type="b",pch=1,ylab="",xlab = TeX(r'($\tau$)'), xaxt = "n",lwd=1.5,ylim=range(coefTauLM[,4],lowerTauLM[,4],upperTauLM[,4],coefTauLMNaive[,4],lowerTauLMNaive[,4],upperTauLMNaive[,4],coefTauIV[,4],lowerTauIV[,4],upperTauIV[,4],coefTauLL[,4],lowerTauLL[,4],upperTauLL[,4]))
+lines(TauAll,lowerTauLM[,4],lty="dotted",col="black",xaxt="n")
+lines(TauAll,upperTauLM[,4],lty="dotted",col="black",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLM[,4],rev(upperTauLM[,4])), col = adjustcolor("black", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauLMNaive[,4],col="red",xaxt="n",type="b",pch=2,lwd=1.5)
+lines(TauAll,upperTauLMNaive[,4],lty="dotted",col="red",xaxt="n")
+lines(TauAll,lowerTauLMNaive[,4],lty="dotted",col="red",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLMNaive[,4],rev(upperTauLMNaive[,4])), col = adjustcolor("red", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauIV[,4],col="blue",xaxt="n",type="b",pch=3,lwd=1.5)
+lines(TauAll,upperTauIV[,4],lty="dotted",col="blue",xaxt="n")
+lines(TauAll,lowerTauIV[,4],lty="dotted",col="blue",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauIV[,4],rev(upperTauIV[,4])), col = adjustcolor("blue", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauLL[,4],col="purple",xaxt="n",type="b",pch=4,lwd=1.5)
+lines(TauAll,lowerTauLL[,4],lty="dotted",col="purple",xaxt="n")
+lines(TauAll,upperTauLL[,4],lty="dotted",col="purple",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLL[,4],rev(upperTauLL[,4])), col = adjustcolor("purple", alpha.f=0.1) , lty = 0)
+axis(1, at = TauAll, label = c("(B) 0.1","0.25","0.50","0.75","(WORST) 1"))
+grid()
+abline(h=0)
+title(ylab = TeX(r'(${(\hat{\gamma}_R - \gamma_R)/{\gamma_R}}$ (Symmetric $\log_{10}$ scale) )'),mgp=c(2,0,0))
+legend("bottomleft",legend=c("OLS NAIVE","OLS","IV","ML"),col=c("red","black","blue","purple"),lty=1,lwd=1.5,cex=1.0,pch=c(2,1,3,4))
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRel_gammaRTau.pdf")
+
+dev.new()
+plot(TauAll,coefTauLM[,5],type="b",pch=1,ylab="",xlab = TeX(r'($\tau$)'), xaxt = "n",lwd=1.5,ylim=range(coefTauLM[,5],lowerTauLM[,5],upperTauLM[,5],coefTauLMNaive[,5],lowerTauLMNaive[,5],upperTauLMNaive[,5],coefTauIV[,5],lowerTauIV[,5],upperTauIV[,5],coefTauLL[,5],lowerTauLL[,5],upperTauLL[,5]))
+lines(TauAll,lowerTauLM[,5],lty="dotted",col="black",xaxt="n")
+lines(TauAll,upperTauLM[,5],lty="dotted",col="black",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLM[,5],rev(upperTauLM[,5])), col = adjustcolor("black", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauLMNaive[,5],col="red",xaxt="n",type="b",pch=2,lwd=1.5)
+lines(TauAll,upperTauLMNaive[,5],lty="dotted",col="red",xaxt="n")
+lines(TauAll,lowerTauLMNaive[,5],lty="dotted",col="red",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLMNaive[,5],rev(upperTauLMNaive[,5])), col = adjustcolor("red", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauIV[,5],col="blue",xaxt="n",type="b",pch=3,lwd=1.5)
+lines(TauAll,upperTauIV[,5],lty="dotted",col="blue",xaxt="n")
+lines(TauAll,lowerTauIV[,5],lty="dotted",col="blue",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauIV[,5],rev(upperTauIV[,5])), col = adjustcolor("blue", alpha.f=0.1) , lty = 0)
+lines(TauAll,coefTauLL[,5],col="purple",xaxt="n",type="b",pch=4,lwd=1.5)
+lines(TauAll,lowerTauLL[,5],lty="dotted",col="purple",xaxt="n")
+lines(TauAll,upperTauLL[,5],lty="dotted",col="purple",xaxt="n")
+polygon(c(TauAll, rev(TauAll)), c(lowerTauLL[,5],rev(upperTauLL[,5])), col = adjustcolor("purple", alpha.f=0.1) , lty = 0)
+axis(1, at = TauAll, label = c("(B) 0.1","0.25","0.50","0.75","(WORST) 1"))
+grid()
+abline(h=0)
+title(ylab = TeX(r'(${(\hat{\gamma}_D - \gamma_D)/{\gamma_D}}$ (Symmetric $\log_{10}$ scale) )'),mgp=c(2,0,0))
+legend("bottomleft",legend=c("OLS NAIVE","OLS","IV","ML"),col=c("red","black","blue","purple"),lty=1,lwd=1.5,cex=1.0,pch=c(2,1,3,4))
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEGridErrRel_gammaDTau.pdf")
+
+
+# WORST CASE ----
+Na=100
+Nm = 1000
+tau= 1.0
+NeS = 100
+SARDp = list(alpha = 0.01, phi = 0.01, gammaS = 0.0, gammaA = -0.00175, gammaR = 0.0025, gammaD = 0.00525, hA = 0.15, hR = 0.4)
+
+# PDE once 
+PDEAll = call_julia_computePDE(tau,SARDp)
+
+# Np = 144 
+Np = 144
+
+## create PDE shape 
+shpMC = createShape(Np, typeOfDist = "Uniform")
+Xpde = PDEAll$X
+Ypde = PDEAll$Y
+PDE0 = PDEAll$PDE0
+PDET = PDEAll$PDET
+
+#For s
+SComputed = call_julia_computeS(NeS)
+Xs = SComputed$X
+Ys = SComputed$Y
+S = SComputed$S
+
+data_shp = createDataframePDE(PDE0, PDET, Xpde, Ypde, shpMC, tau, Xs, Ys, S)
+data = data_shp$data
+shp = data_shp$shp_sf
+
+
+## create regressors
+MsDeriv = GFDM(data,torus=TRUE)
+D = compute_D(data,longlat=FALSE,torus=TRUE)
+WhA = compute_WhAR(D,data,SARDp$hA)
+WhR = compute_WhAR(D,data,SARDp$hR)
+xA = compute_xAR(data,MsDeriv, WhA)
+xR = compute_xAR(data,MsDeriv, WhR)
+xD = compute_xD(data,MsDeriv)
+MA = compute_MARLag(data,MsDeriv,WhA)
+MR = compute_MARLag(data,MsDeriv,WhR)
+MD = compute_MDLag(MsDeriv)
+shp = cbind(shp,xA,xR,xD)
+plot(shp[c("y0","yT","delta","xA","xR","xD")])
+
+
+## estimate PDE LL
+estimatePDE_LM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE_IV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE_LL = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
+save(estimatePDE_LM_NAIVE,estimatePDE_LM,estimatePDE_IV,estimatePDE_LL, file = "../dataset_montecarlo/EstimateWORST.RData")
+
+coefLL = estimatePDE_LL$outARD_3MatEstimate$coef[c(1,2,3,4,5)]
+covBeta = estimatePDE_LL$outARD_3MatEstimate$covBeta
+y0yT = matrix(data = NA, nrow = Nm, ncol = 2); 
+coefMLMNaive = matrix(data = NA, nrow = Nm, ncol = 5)
+coefMLM = matrix(data = NA, nrow = Nm, ncol = 5)
+coefMIV = matrix(data = NA, nrow = Nm, ncol = 5)
+coefMLL = matrix(data = NA, nrow = Nm, ncol = 5)
+for (m in 1:Nm){
+    # print(m)
+    
+    iBoot = sample(1:nrow(data),replace=T)
     datam = data[iBoot,]
     xAm = xA[iBoot]
     xRm = xR[iBoot]
@@ -460,33 +871,243 @@ for (m in 1:Nm){
     MADeltam = MADelta[iBoot]
     MRDeltam = MRDelta[iBoot]
     MDDeltam = MDDelta[iBoot]
+    MA2Xm=MA2X[iBoot,]
+    MR2Xm=MR2X[iBoot,]
+    MD2Xm=MD2X[iBoot,]
+    y0yT[m,1] = sum(datam$y0)*1/Np
+    y0yT[m,2] = sum(datam$yT)*1/Np
     
-    estimatePDE576_LMm = estimate_ARD_MC_LMBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
-    coefM[m,] = estimatePDE576_LMm$coefficients[c(1,3,5)]
+    estimatePDE_LMm = estimate_ARD_MC_LMBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
+    coefMLM[m,] = estimatePDE_LMm$coefficients[c(1,2,3,5,7)]
+    
+    estimatePDE_LMNaivem = estimate_ARD_MC_LM_NAIVEBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
+    coefMLMNaive[m,] = estimatePDE_LMNaivem$coefficients[c(1,2,3,4,5)]
+    
+    estimatePDE_IVm = estimate_ARD_MC_IVBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam,MA2Xm,MR2Xm,MD2Xm)
+    coefMIV[m,] = coef(estimatePDE_IVm)[c(1,2,3,4,5)]
+    
+    # robust SE
+    y0 = y0yT[m,1]
+    yT = y0yT[m,2]
+    
+    coefLMTilde = coefMLM[m,]
+    alphaTildeLM = coefLMTilde[1]
+    phiTildeLM = coefLMTilde[2]
+    rhoPhiLM = 2/tau*(1-log( (yT + alphaTildeLM/phiTildeLM)/(y0 + alphaTildeLM/phiTildeLM) )/(tau*phiTildeLM) )
+    coefMLM[m,] = coefLMTilde*(1-tau*rhoPhiLM/2)
+    
+    coefLMNaiveTilde = coefMLMNaive[m,]
+    alphaTildeLMNaive = coefLMNaiveTilde[1]
+    phiTildeLMNaive = coefLMNaiveTilde[2]
+    rhoPhiLMNaive = 2/tau*(1-log( (yT + alphaTildeLMNaive/phiTildeLMNaive)/(y0 + alphaTildeLMNaive/phiTildeLMNaive) )/(tau*phiTildeLMNaive) )
+    coefMLMNaive[m,] = coefLMNaiveTilde*(1-tau*rhoPhiLMNaive/2)
+    
+    coefIVTilde = coefMIV[m,]
+    alphaTildeIV = coefIVTilde[1]
+    phiTildeIV = coefIVTilde[2]
+    rhoPhiIV = 2/tau*(1-log( (yT + alphaTildeIV/phiTildeIV)/(y0 + alphaTildeIV/phiTildeIV) )/(tau*phiTildeIV) )
+    coefMIV[m,] = coefIVTilde*(1-tau*rhoPhiIV/2)
+    
+    # coefficient notTilde by resampling for LL
+    y0 = sum(data$y0)*1/Np
+    yT = sum(data$yT)*1/Np
+    
+    coefLLTilde = mvrnorm(n=1,mu=coefLL,Sigma=covBeta)
+    alphaTildeLL = coefLLTilde[1]
+    phiTildeLL = coefLLTilde[2]
+    rhoPhiLL = 2/tau*(1-log( (yT + alphaTildeLL/phiTildeLL)/(y0 + alphaTildeLL/phiTildeLL) )/(tau*phiTildeLL) )
+    coefMLL[m,] = coefLLTilde*(1-tau*rhoPhiLL/2)
 }
 
-dev.new()
-par(mfrow=c(1,3))
-# xA
-hist(coefM[,1],50,xlim=range(c(coefM[,1],SARDp$gammaA)),main="gammaA")
-abline(v=SARDp$gammaA,col="red")
-abline(v=estimatePDE576_LM$coefficients[1],col="blue")
+coefLMNaive = apply(coefMLMNaive,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+seLMNaive = apply(coefMLMNaive,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
 
-# xR
-hist(coefM[,2],50,main="gammaR")
-abline(v=SARDp$gammaR,col="red")
-abline(v=estimatePDE576_LM$coefficients[3],col="blue")
+coefLM = apply(coefMLM,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+seLM = apply(coefMLM,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
 
-# xD
-hist(coefM[,3],50,xlim=range(SARDp$gammaD,coefM[,3]),main="gammaD")
-abline(v=SARDp$gammaD,col="red")
-abline(v=estimatePDE576_LM$coefficients[5],col="blue")
-legend("topright",legend=c("true parameter","estimated via PDE"),col=c("red","blue"),lty=1,cex=1.0)
+coefIV = apply(coefMIV,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+seIV = apply(coefMIV,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
 
-dev.copy2pdf(file="bootCoeff.pdf")
+coefNpLL = apply(coefMLL,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+seLL  = apply(coefMLL,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
 
-# Analysis of Wepsilon for different Np ----
+round(coefLMNaive,digits = 5)
+round(estimatePDE_LM_NAIVE$AICc,digits = 2) 
+round(estimatePDE_LM_NAIVE$R2, digits = 4)
+round(seLMNaive, digits = 5)
 
+round(coefLM,digits = 5)
+round(estimatePDE_LM$AICc,digits = 2) 
+round(estimatePDE_LM$R2, digits = 4)
+round(seLM, digits = 5)
+
+round(coefIV,digits = 5)
+round(estimatePDE_IV$AICc,digits = 2) 
+round(estimatePDE_IV$R2, digits = 4)
+round(seIV, digits = 5)
+
+round(coefLL,digits = 5)
+round(estimatePDE_LL$AICc,digits = 2) 
+round(estimatePDE_LL$R2, digits = 4)
+round(seLL, digits = 5)
+
+
+# BEST CASE ----
+Na=100
+Nm = 1000
+tau= 0.1
+NeS = 100
+SARDp = list(alpha = 0.01, phi = 0.01, gammaS = 0.0, gammaA = -0.00175, gammaR = 0.0025, gammaD = 0.00525, hA = 0.15, hR = 0.4)
+
+# PDE once 
+PDEAll = call_julia_computePDE(tau,SARDp)
+
+# Np = 144 
+Np = 2500
+
+## create PDE shape 
+shpMC = createShape(Np, typeOfDist = "Uniform")
+Xpde = PDEAll$X
+Ypde = PDEAll$Y
+PDE0 = PDEAll$PDE0
+PDET = PDEAll$PDET
+
+#For s
+SComputed = call_julia_computeS(NeS)
+Xs = SComputed$X
+Ys = SComputed$Y
+S = SComputed$S
+
+data_shp = createDataframePDE(PDE0, PDET, Xpde, Ypde, shpMC, tau, Xs, Ys, S)
+data = data_shp$data
+shp = data_shp$shp_sf
+
+
+## create regressors
+MsDeriv = GFDM(data,torus=TRUE)
+D = compute_D(data,longlat=FALSE,torus=TRUE)
+WhA = compute_WhAR(D,data,SARDp$hA)
+WhR = compute_WhAR(D,data,SARDp$hR)
+xA = compute_xAR(data,MsDeriv, WhA)
+xR = compute_xAR(data,MsDeriv, WhR)
+xD = compute_xD(data,MsDeriv)
+MA = compute_MARLag(data,MsDeriv,WhA)
+MR = compute_MARLag(data,MsDeriv,WhR)
+MD = compute_MDLag(MsDeriv)
+shp = cbind(shp,xA,xR,xD)
+plot(shp[c("y0","yT","delta","xA","xR","xD")])
+
+
+## estimate PDE LL
+estimatePDE_LM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE_IV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
+estimatePDE_LL = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
+save(estimatePDE_LM_NAIVE,estimatePDE_LM,estimatePDE_IV,estimatePDE_LL, file = "../dataset_montecarlo/EstimateBEST.RData")
+
+
+coefLL = estimatePDE_LL$outARD_3MatEstimate$coef[c(1,2,3,4,5)]
+covBeta = estimatePDE_LL$outARD_3MatEstimate$covBeta
+y0yT = matrix(data = NA, nrow = Nm, ncol = 2); 
+coefMLMNaive = matrix(data = NA, nrow = Nm, ncol = 5)
+coefMLM = matrix(data = NA, nrow = Nm, ncol = 5)
+coefMIV = matrix(data = NA, nrow = Nm, ncol = 5)
+coefMLL = matrix(data = NA, nrow = Nm, ncol = 5)
+for (m in 1:Nm){
+    # print(m)
+    
+    iBoot = sample(1:nrow(data),replace=T)
+    datam = data[iBoot,]
+    xAm = xA[iBoot]
+    xRm = xR[iBoot]
+    xDm = xD[iBoot]
+    MADeltam = MADelta[iBoot]
+    MRDeltam = MRDelta[iBoot]
+    MDDeltam = MDDelta[iBoot]
+    MA2Xm=MA2X[iBoot,]
+    MR2Xm=MR2X[iBoot,]
+    MD2Xm=MD2X[iBoot,]
+    y0yT[m,1] = sum(datam$y0)*1/Np
+    y0yT[m,2] = sum(datam$yT)*1/Np
+    
+    estimatePDE_LMm = estimate_ARD_MC_LMBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
+    coefMLM[m,] = estimatePDE_LMm$coefficients[c(1,2,3,5,7)]
+    
+    estimatePDE_LMNaivem = estimate_ARD_MC_LM_NAIVEBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
+    coefMLMNaive[m,] = estimatePDE_LMNaivem$coefficients[c(1,2,3,4,5)]
+    
+    estimatePDE_IVm = estimate_ARD_MC_IVBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam,MA2Xm,MR2Xm,MD2Xm)
+    coefMIV[m,] = coef(estimatePDE_IVm)[c(1,2,3,4,5)]
+    
+    # robust SE
+    y0 = y0yT[m,1]
+    yT = y0yT[m,2]
+    
+    coefLMTilde = coefMLM[m,]
+    alphaTildeLM = coefLMTilde[1]
+    phiTildeLM = coefLMTilde[2]
+    rhoPhiLM = 2/tau*(1-log( (yT + alphaTildeLM/phiTildeLM)/(y0 + alphaTildeLM/phiTildeLM) )/(tau*phiTildeLM) )
+    coefMLM[m,] = coefLMTilde*(1-tau*rhoPhiLM/2)
+    
+    coefLMNaiveTilde = coefMLMNaive[m,]
+    alphaTildeLMNaive = coefLMNaiveTilde[1]
+    phiTildeLMNaive = coefLMNaiveTilde[2]
+    rhoPhiLMNaive = 2/tau*(1-log( (yT + alphaTildeLMNaive/phiTildeLMNaive)/(y0 + alphaTildeLMNaive/phiTildeLMNaive) )/(tau*phiTildeLMNaive) )
+    coefMLMNaive[m,] = coefLMNaiveTilde*(1-tau*rhoPhiLMNaive/2)
+    
+    coefIVTilde = coefMIV[m,]
+    alphaTildeIV = coefIVTilde[1]
+    phiTildeIV = coefIVTilde[2]
+    rhoPhiIV = 2/tau*(1-log( (yT + alphaTildeIV/phiTildeIV)/(y0 + alphaTildeIV/phiTildeIV) )/(tau*phiTildeIV) )
+    coefMIV[m,] = coefIVTilde*(1-tau*rhoPhiIV/2)
+    
+    # coefficient notTilde by resampling for LL
+    y0 = sum(data$y0)*1/Np
+    yT = sum(data$yT)*1/Np
+    
+    coefLLTilde = mvrnorm(n=1,mu=coefLL,Sigma=covBeta)
+    alphaTildeLL = coefLLTilde[1]
+    phiTildeLL = coefLLTilde[2]
+    rhoPhiLL = 2/tau*(1-log( (yT + alphaTildeLL/phiTildeLL)/(y0 + alphaTildeLL/phiTildeLL) )/(tau*phiTildeLL) )
+    coefMLL[m,] = coefLLTilde*(1-tau*rhoPhiLL/2)
+}
+
+coefLMNaive = apply(coefMLMNaive,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+seLMNaive = apply(coefMLMNaive,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
+
+coefLM = apply(coefMLM,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+seLM = apply(coefMLM,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
+
+coefIV = apply(coefMIV,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+seIV = apply(coefMIV,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
+
+coefNpLL = apply(coefMLL,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
+seLL  = apply(coefMLL,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
+
+round(coefLMNaive,digits = 5)
+round(estimatePDE_LM_NAIVE$AICc,digits = 2) 
+round(estimatePDE_LM_NAIVE$R2, digits = 4)
+round(seLMNaive, digits = 5)
+
+round(coefLM,digits = 5)
+round(estimatePDE_LM$AICc,digits = 2) 
+round(estimatePDE_LM$R2, digits = 4)
+round(seLM, digits = 5)
+
+round(coefIV,digits = 5)
+round(estimatePDE_IV$AICc,digits = 2) 
+round(estimatePDE_IV$R2, digits = 4)
+round(seIV, digits = 5)
+
+round(coefLL,digits = 5)
+round(estimatePDE_LL$AICc,digits = 2) 
+round(estimatePDE_LL$R2, digits = 4)
+round(seLL, digits = 5)
+
+
+
+# Analysis of Wepsilon for different Np and tau----
+# insert cosa carichiamo
 lambdaHat = vector("numeric",length(Np))
 lambdas = matrix(NA, nrow=length(Np), ncol=10)
 maxLag = vector("numeric",length(Np))
@@ -498,5 +1119,4 @@ for (i in 1:length(Np)){
 
 tableW = cbind(round(Np, digits=0), lambdaHat, lambdas, maxLag)
 colnames(tableW) = c("Np", "lambda hat", paste("lambdaHat",seq(1:10)), "max lag")
-
 print(xtable(tableW), include.rownames=FALSE)

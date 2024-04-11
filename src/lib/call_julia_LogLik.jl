@@ -294,7 +294,7 @@ function julia_LogLik_3Mat(X,Y,MA,MR,MD,Weps,initialCondition)
     pvalue_coef = [pValueBeta...,pValueTheta...]
     residuals = resid
 
-    return(coef, se_coef, pvalue_coef, residuals)
+    return(coef, se_coef, pvalue_coef, residuals, covBeta)
 end
 
 function LogLik_3MatSpatErr(p,param)  

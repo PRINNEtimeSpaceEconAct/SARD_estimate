@@ -169,8 +169,8 @@ LogLikAICcR2 <- function(df, coef, k, xS, xA, xR, xD, MS, MA, MR, MD, W_eps){
     Omega = sigma2 * diag(N)
     nu = mu / sqrt(sigma2)
     
-    logAbsDetA = Matrix::det(A, modulus=TRUE)   # log(|det(A)|)
-    logAbsDetB = det(B,modulus = TRUE)
+    logAbsDetA = determinant(A)$modulus   # log(|det(A)|)
+    logAbsDetB = determinant(B)$modulus
     
     LogLiKelyhood = -(N/2)*(log(2*pi)) - (N/2)*log(sigma2) + 
         + logAbsDetB + logAbsDetA - 1/2 * as.numeric(t(nu) %*% nu)
@@ -183,10 +183,17 @@ LogLikAICcR2 <- function(df, coef, k, xS, xA, xR, xD, MS, MA, MR, MD, W_eps){
     return(listN(LogLiKelyhood,AICc,R2Nagelkerke))
 }
 
+LogLikelyhood2AICc <- function(LogLiKelyhood,k,N){
+    AIC = 2*k - 2*LogLiKelyhood
+    AICc = AIC + (2*k^2+2*k)/(N-k-1)
+    return(AICc)
+}
+
+
 AICc2R2Nagelkerke <- function(aicc,Y,k){
     # from AIC corrected to R^2 Nagelkerke
     
-    N = nrow(Y)
+    N = length(Y)
     
     # null model
     LL0 = logLik(lm(Y ~ 1))

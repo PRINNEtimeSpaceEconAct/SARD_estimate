@@ -84,7 +84,8 @@ function df!(du,u,p,t)
     WhAu = imfilter(u,WhA,Pad(:circular,Nx,Nx))*Δx^2
     WhRu = imfilter(u,WhR,Pad(:circular,Nx,Nx))*Δx^2
 
-    du .= ( SARDp.gammaS * (∂x(u .* ∂xS) +  ∂y(u .* ∂yS)) + 
+    du .= ( SARDp.alpha .+ SARDp.phi * u + 
+          + SARDp.gammaS * (∂x(u .* ∂xS) +  ∂y(u .* ∂yS)) + 
           + SARDp.gammaA * (∂x(u .* ∂x(WhAu)) +  ∂y(u .* ∂y(WhAu))) +
           + SARDp.gammaR * (∂x(u .* ∂x(WhRu)) +  ∂y(u .* ∂y(WhRu))) +
           + SARDp.gammaD * Δ(u))

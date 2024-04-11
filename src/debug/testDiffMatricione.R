@@ -6,7 +6,7 @@ library(plotly)
 DEBUG=TRUE
 
 # coordinates grid
-N = 100
+N = 5
 x = seq(0,1,length.out=N)
 y = seq(0,1,length.out=N)
 coord = as.matrix(expand.grid(x,y))
@@ -40,7 +40,7 @@ fx = fx(coord[,1],coord[,2])
 coord[,1] = (coord[,1] + 0.5) %% 1.0
 # visualize
 df = data.frame(x = coord[,1], y = coord[,2], z = z)
-plot_ly(df,x = ~x,y = ~y, z = ~z,type = "scatter3d",size = 0.1, showlegend = FALSE)
+plot_ly(df,x = ~x,y = ~y, z = ~z,type = "mesh3d",size = 0.1, showlegend = FALSE)
 
 df = data.frame(x = coord[,1], y = coord[,2], z = Mxz)
 plot_ly(df,x = ~x,y = ~y, z = ~z,type = "scatter3d",size = 0.1, showlegend = FALSE)

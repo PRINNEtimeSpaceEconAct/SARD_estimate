@@ -159,8 +159,9 @@ call_julia_LogLik_3Mat <- function(X,Y,MA,MR,MD,Weps,initialCondition){
     se_coef = outJulia[[2]]
     pvalue_coef = outJulia[[3]]
     residuals = outJulia[[4]]
+    covBeta = outJulia[[5]]
     
-    return(listN(coef, se_coef, pvalue_coef, residuals))
+    return(listN(coef, se_coef, pvalue_coef, residuals, covBeta))
 }
 
 
@@ -210,13 +211,15 @@ call_julia_computePDE <- function(tau,SARDp){
     
     julia_assign("tau",tau)
     
+    julia_assign("alpha",SARDp$alpha)
+    julia_assign("phi",SARDp$phi)
     julia_assign("gammaS",SARDp$gammaS)
     julia_assign("gammaA",SARDp$gammaA)
     julia_assign("gammaR",SARDp$gammaR)
     julia_assign("gammaD",SARDp$gammaD)
     julia_assign("hA",SARDp$hA)
     julia_assign("hR",SARDp$hR)
-    julia_command("SARDp = (gammaS = gammaS,gammaA = gammaA,gammaR = gammaR,gammaD = gammaD,hA = hA,hR = hR)")
+    julia_command("SARDp = (alpha = alpha, phi = phi, gammaS = gammaS,gammaA = gammaA,gammaR = gammaR,gammaD = gammaD,hA = hA,hR = hR)")
     
     outJulia = julia_eval('computePDE(tau,SARDp);')
     X = outJulia[[1]]
