@@ -17,7 +17,6 @@ mapErrorsSameScale <- function(SARD,DURBIN,df,shp){
     tm_obj
     tmap_save(tm = tm_obj,  filename = "../datasets_montecarlo/residDurbin.pdf")
     
-    
 }
 
 plotRescaledVarf <- function(shpData, quantileArray = NULL, data, var.name, id.name, nqq=5, includeZero=TRUE){
@@ -92,7 +91,7 @@ mapGRForecast <- function(data,shp,dfForecast,VarFinal,fileName,counterfactual=T
     cities = shp %>% filter(cities == 1)
     
 
-    dev.new()
+        # dev.new()
     if (counterfactual) {
         shp <- shp %>% mutate(GR.SARD = ifelse(yFutSARD > 0, (log(yFutSARD/y0)/11*100), 0))
         data <- data %>% mutate(GR.SARD = ifelse(yFutSARD > 0, (log(yFutSARD/y0)/11*100), 0))
@@ -100,10 +99,11 @@ mapGRForecast <- function(data,shp,dfForecast,VarFinal,fileName,counterfactual=T
         data = data %>% mutate(GR.plot = GR.SARD - GR.VarFinal)
         
         plotRescaledVar <- plotRescaledVarf(shp=shp, data=data, var.name="GR.plot", id.name="geo", nqq=5, includeZero=F)
-        tm_obj <- tm_shape(plotRescaledVar$shp) + tm_fill("varDraw", title="Annual growth rate (%)", breaks=plotRescaledVar$breaks_qt,  palette="RdBu", midpoint =0, labels=plotRescaledVar$lab) + tm_layout(frame = FALSE) + tm_borders("white", alpha=0) + tmap_options(check.and.fix = TRUE)
+        tm_obj <- tm_shape(plotRescaledVar$shp) + tm_fill("varDraw", title="Annual growth rate (%)", breaks=plotRescaledVar$breaks_qt,  palette="RdBu", midpoint =0, labels=plotRescaledVar$lab) + tm_layout(frame = FALSE) + tm_borders("white", alpha=0) + tmap_options(check.and.fix = TRUE) + tm_shape(cities) +  tm_borders(alpha = 1, col="gold")
         tm_obj
     }
     else{
+        shp <- shp %>% mutate(GR.VarFinal = ifelse(VarFinal > 0, (log(VarFinal/y0)/50*100), 0))
         breaks_qt = c(min(shp$VarFinal,na.rm=T), 0, classIntervals((filter(shp, GR.VarFinal>0)$GR.VarFinal), n = 8, style = "quantile")$brks)
         cols = c("salmon", brewer.pal(9,"Blues"))
         brkslab = c("negative")
@@ -111,7 +111,7 @@ mapGRForecast <- function(data,shp,dfForecast,VarFinal,fileName,counterfactual=T
             brkslab[i] = paste(round(breaks_qt[i-1],digits=2), " to ", round(breaks_qt[i],digits=2))
         }
         brkslab=brkslab[-c(2)]
-        tm_obj <- tm_shape(shp) + tm_fill("GR.VarFinal", title="Annual growth rate (%)", breaks=breaks_qt,labels=brkslab,palette=cols) + tm_layout(frame = FALSE) + tm_borders("white", alpha=0) +     tmap_options(check.and.fix = TRUE)  + tm_shape(cities) +  tm_borders(alpha = 1, col="gold")
+        tm_obj <- tm_shape(shp) + tm_fill("GR.VarFinal", title="Annual growth rate (%)", breaks=breaks_qt,labels=brkslab,palette=cols) + tm_layout(frame = FALSE) + tm_borders("white", alpha=0) + tmap_options(check.and.fix = TRUE)  + tm_shape(cities) +  tm_borders(alpha = 1, col="gold")
         tm_obj
     }
     

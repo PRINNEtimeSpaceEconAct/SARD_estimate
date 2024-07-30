@@ -224,3 +224,32 @@ correlogram <- function(resid,shp,maxLag = 20){
     
     return(listN(correlogram_resid))
 }
+
+
+partialCorrelogram <- function(resid,shp,maxLag = 20){
+    # make the spatial correlogram with contiguity matrices
+    
+    sf_use_s2(FALSE)
+    resid = as.numeric(resid)
+    spatialNeighbors <- poly2nb(shp)
+    neigList = nblag(spatialNeighbors, maxLag)
+    neigListMat = lapply(neigList,FUN=function(x) return(nb2mat(x, style="B", zero.policy = T)))
+    WresidList = lapply(neigListMat, FUN=function(x) return(x%*%resid))
+    WresidMat = matrix(unlist(WresidList), nrow = length(resid), ncol=maxLag)
+    
+    partialCorr = vector("numeric", length = maxLag)
+    partialCorrSe = vector("numeric", length = maxLag)
+    
+    for (i in 1:maxLag){
+        s = summary(lm(resid ~ WresidMat[,1:i]))
+        partialCorr[i] = s$coefficients[i+1,"Estimate"]
+        partialCorrSe[i] = s$coefficients[i+1,"Std. Error"]
+    }
+    
+    plot(1:maxLag,partialCorr,xlab="Lag",pch=18,ylim=range(partialCorr-1.96*partialCorrSe,partialCorr+1.96*partialCorrSe),xlim=c(1,maxLag))
+    axis(side = 1, at = 1:maxLag)
+    arrows(1:maxLag,partialCorr-1.96*partialCorrSe,1:maxLag,partialCorr+1.96*partialCorrSe,length=0.1,angle=90,code=3)
+    abline(h=0)
+    return(listN(partialCorr,partialCorrSe))
+}
+

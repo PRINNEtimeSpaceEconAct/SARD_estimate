@@ -1,3 +1,4 @@
+# start ----
 rm(list = ls())
 source("lib/L_loadAll.R")
 library(viridis)
@@ -146,11 +147,12 @@ for (i in 1:length(NpAll)){
     Ypde = PDEAll$Y
     PDE0 = PDEAll$PDE0
     PDET = PDEAll$PDET
+    
     #For s
-    SComputed = call_julia_computeS(NeS)
-    Xs = SComputed$X
-    Ys = SComputed$Y
-    S = SComputed$S
+    NeS = 100
+    Xs = matrix(0,nrow=NeS,ncol=NeS)
+    Ys = matrix(0,nrow=NeS,ncol=NeS)
+    S = matrix(0,nrow=NeS,ncol=NeS)
     
     data_shp = createDataframePDE(PDE0, PDET, Xpde, Ypde, shpMC, tau, Xs, Ys, S)
     data = data_shp$data
@@ -160,9 +162,11 @@ for (i in 1:length(NpAll)){
     D = compute_D(data,longlat=FALSE,torus=TRUE)
     WhA = compute_WhAR(D,data,SARDp$hA)
     WhR = compute_WhAR(D,data,SARDp$hR)
+    xS = runif(Np)
     xA = compute_xAR(data,MsDeriv, WhA)
     xR = compute_xAR(data,MsDeriv, WhR)
     xD = compute_xD(data,MsDeriv)
+    MS = matrix(data=0, nrow=Np,ncol=Np)
     MA = compute_MARLag(data,MsDeriv,WhA)
     MR = compute_MARLag(data,MsDeriv,WhR)
     MD = compute_MDLag(MsDeriv)
@@ -184,44 +188,67 @@ for (i in 1:length(NpAll)){
     AICR2LMNaive[i,] = c(estimateNpLM_NAIVE$AICc,estimateNpLM_NAIVE$R2)
     
     estimateNpLM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
-    AICR2LM[i,] = c(estimateNpLM$AICc,estimateNpLM$R2)
+    coefLM = coef(estimateNpLM$LM_est)
+    coefLM = c(coefLM[c(1,2)],0,coefLM[c(3,5,7)],0,coefLM[c(4,6,8)])
+    WN_SARD_OLS_BYSARD = LogLikAICcR2(data, c(coefLM,0), 10, xS, xA, xR, xD, 
+                                      MS, MA, MR, MD, diag(nrow(data)))
+    AICR2LM[i,] = c(WN_SARD_OLS_BYSARD$AICc[[1]],WN_SARD_OLS_BYSARD$R2Nagelkerke)
+    
     
     estimateNpIV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
     AICR2IV[i,] = c(estimateNpIV$AICc,estimateNpIV$R2)
     
-    estimateNpLL[[i]] = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
-    AICR2LL[i,] = c(estimateNpLL[[i]]$AICc,estimateNpLL[[i]]$R2)
-    coefNpLL[i,] = estimateNpLL[[i]]$outARD_3MatEstimate$coef[c(1,2,3,4,5)]
-    
-    for (m in 1:Nm){
-        # print(m)
-        
-        iBoot = sample(1:nrow(data),replace=T)
-        datam = data[iBoot,]
-        xAm = xA[iBoot]
-        xRm = xR[iBoot]
-        xDm = xD[iBoot]
-        MADeltam = MADelta[iBoot]
-        MRDeltam = MRDelta[iBoot]
-        MDDeltam = MDDelta[iBoot]
-        MA2Xm=MA2X[iBoot,]
-        MR2Xm=MR2X[iBoot,]
-        MD2Xm=MD2X[iBoot,]
-        y0yT[i,m,1] = sum(datam$y0)*1/Np
-        y0yT[i,m,2] = sum(datam$yT)*1/Np
-        
-
-        estimatePDE_LMNaivem = estimate_ARD_MC_LM_NAIVEBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
-        coefMNpLMNaive[i,m,] = estimatePDE_LMNaivem$coefficients[c(1,2,3,4,5)]
-        
-        estimatePDE_LMm = estimate_ARD_MC_LMBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
-        coefMNpLM[i,m,] = estimatePDE_LMm$coefficients[c(1,2,3,5,7)]
-        
-        estimatePDE_IVm = estimate_ARD_MC_IVBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam,MA2Xm,MR2Xm,MD2Xm)
-        coefMNpIV[i,m,] = coef(estimatePDE_IVm)[c(1,2,3,4,5)]
-    }
+    # estimateNpLL[[i]] = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
+    # AICR2LL[i,] = c(estimateNpLL[[i]]$AICc,estimateNpLL[[i]]$R2)
+    # coefNpLL[i,] = estimateNpLL[[i]]$outARD_3MatEstimate$coef[c(1,2,3,4,5)]
+    # 
+    # for (m in 1:Nm){
+    #     # print(m)
+    #     
+    #     iBoot = sample(1:nrow(data),replace=T)
+    #     datam = data[iBoot,]
+    #     xAm = xA[iBoot]
+    #     xRm = xR[iBoot]
+    #     xDm = xD[iBoot]
+    #     MADeltam = MADelta[iBoot]
+    #     MRDeltam = MRDelta[iBoot]
+    #     MDDeltam = MDDelta[iBoot]
+    #     MA2Xm=MA2X[iBoot,]
+    #     MR2Xm=MR2X[iBoot,]
+    #     MD2Xm=MD2X[iBoot,]
+    #     y0yT[i,m,1] = sum(datam$y0)*1/Np
+    #     y0yT[i,m,2] = sum(datam$yT)*1/Np
+    #     
+    # 
+    #     estimatePDE_LMNaivem = estimate_ARD_MC_LM_NAIVEBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
+    #     coefMNpLMNaive[i,m,] = estimatePDE_LMNaivem$coefficients[c(1,2,3,4,5)]
+    #     
+    #     estimatePDE_LMm = estimate_ARD_MC_LMBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
+    #     coefMNpLM[i,m,] = estimatePDE_LMm$coefficients[c(1,2,3,5,7)]
+    #     
+    #     estimatePDE_IVm = estimate_ARD_MC_IVBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam,MA2Xm,MR2Xm,MD2Xm)
+    #     coefMNpIV[i,m,] = coef(estimatePDE_IVm)[c(1,2,3,4,5)]
+    # }
 }
 save(NpAll,coefMNpLM,coefMNpLMNaive,coefMNpIV,coefNpLL,estimateNpLL,AICR2LMNaive,AICR2LM,AICR2IV,AICR2LL,y0yT,file="../datasets_montecarlo/montecarloPDENpGrid.RData")
+
+## AIC plot ----
+load(file="../datasets_montecarlo/montecarloPDENpGrid.RData")
+Np = NpAll
+DeltaX = 1/sqrt(Np)
+
+dev.new()
+plot(DeltaX,AICR2LM[,1],type="p",ylab="",xlab="",xaxt="n",pch=1,lwd=1.5,ylim=range(AICR2LMNaive[,1],AICR2LM[,1],AICR2IV[,1],AICR2LL[,1]))
+lines(DeltaX,AICR2LMNaive[,1],type="p",col="red",lwd = 1.5, xaxt="n",pch=2)
+lines(DeltaX,AICR2IV[,1],type="p",col="blue",lwd = 1.5,xaxt="n",pch=3)
+lines(DeltaX,AICR2LL[,1],type="p",col="purple",lwd = 1.5,xaxt="n",pch=4)
+mapply(axis, side = 1, at = DeltaX, labels = paste(c("(COARSEST)\n","","","","(A) "), round(DeltaX,digits=3)," \n (N = ",Np ,")",sep=""),las = 3, hadj=0.8, cex.axis=1)
+grid()
+title(ylab = "AICc",mgp=c(2,0,0))
+title(xlab = TeX(r'(                                                                                                                                                                                                 $\frac{1}{\sqrt{N}}$)'),mgp=c(0.5,0,0))
+legend("bottomright",legend=c("OLS NAIVE","OLS","IV","ML"),col=c("red","black","blue","purple"),lty=1,lwd=1.5,cex=1.0,pch=c(2,1,3,4))
+sapply(DeltaX,FUN = function(x) return(abline(v = x,lty=3)) );
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEAICc.pdf")
 
 ## robust SE  ----
 library(latex2exp)
@@ -478,10 +505,13 @@ y0yT = array(data=NA,dim=c(length(TauAll),Nm,2));
 
 #For s
 NeS = 100
-SComputed = call_julia_computeS(NeS)
-Xs = SComputed$X
-Ys = SComputed$Y
-S = SComputed$S
+# SComputed = call_julia_computeS(NeS)
+# Xs = SComputed$X
+# Ys = SComputed$Y
+# S = SComputed$S
+Xs = matrix(0,nrow=NeS,ncol=NeS)
+Ys = matrix(0,nrow=NeS,ncol=NeS)
+S = matrix(0,nrow=NeS,ncol=NeS)
 
 shpMC = createShape(Np, typeOfDist = "Uniform")
 
@@ -504,9 +534,11 @@ for (i in 1:length(TauAll)){
     D = compute_D(data,longlat=FALSE,torus=TRUE)
     WhA = compute_WhAR(D,data,SARDp$hA)
     WhR = compute_WhAR(D,data,SARDp$hR)
+    xS = runif(Np)
     xA = compute_xAR(data,MsDeriv, WhA)
     xR = compute_xAR(data,MsDeriv, WhR)
     xD = compute_xD(data,MsDeriv)
+    MS = matrix(data=0, nrow=nrow(MD),ncol=nrow(MD))
     MA = compute_MARLag(data,MsDeriv,WhA)
     MR = compute_MARLag(data,MsDeriv,WhR)
     MD = compute_MDLag(MsDeriv)
@@ -527,7 +559,11 @@ for (i in 1:length(TauAll)){
     AICR2LMNaive[i,] = c(estimateTauLM_NAIVE$AICc,estimateTauLM_NAIVE$R2)
     
     estimateTauLM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
-    AICR2LM[i,] = c(estimateTauLM$AICc,estimateTauLM$R2)
+    coefLM = coef(estimateTauLM$LM_est)
+    coefLM = c(coefLM[c(1,2)],0,coefLM[c(3,5,7)],0,coefLM[c(4,6,8)])
+    WN_SARD_OLS_BYSARD = LogLikAICcR2(data, c(coefLM,0), 10, xS, xA, xR, xD, 
+                                      MS, MA, MR, MD, diag(nrow(data)))
+    AICR2LM[i,] = c(WN_SARD_OLS_BYSARD$AICc[[1]],WN_SARD_OLS_BYSARD$R2Nagelkerke)
     
     estimateTauIV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
     AICR2IV[i,] = c(estimateTauIV$AICc,estimateTauIV$R2)
@@ -535,10 +571,10 @@ for (i in 1:length(TauAll)){
     estimateTauLL[[i]] = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
     AICR2LL[i,] = c(estimateTauLL[[i]]$AICc,estimateTauLL[[i]]$R2)
     coefTauLL[i,] = estimateTauLL[[i]]$outARD_3MatEstimate$coef[c(1,2,3,4,5)]
-    
+
     for (m in 1:Nm){
         # print(m)
-        
+
         iBoot = sample(1:nrow(data),replace=T)
         datam = data[iBoot,]
         xAm = xA[iBoot]
@@ -552,19 +588,35 @@ for (i in 1:length(TauAll)){
         MD2Xm=MD2X[iBoot,]
         y0yT[i,m,1] = sum(datam$y0)*1/Np
         y0yT[i,m,2] = sum(datam$yT)*1/Np
-        
-        
+
+
         estimatePDE_LMNaivem = estimate_ARD_MC_LM_NAIVEBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
         coefMTauLMNaive[i,m,] = estimatePDE_LMNaivem$coefficients[c(1,2,3,4,5)]
-        
+
         estimatePDE_LMm = estimate_ARD_MC_LMBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam)
         coefMTauLM[i,m,] = estimatePDE_LMm$coefficients[c(1,2,3,5,7)]
-        
+
         estimatePDE_IVm = estimate_ARD_MC_IVBoot(datam,shp,xAm,xRm,xDm,MADeltam,MRDeltam,MDDeltam,MA2Xm,MR2Xm,MD2Xm)
         coefMTauIV[i,m,] = coef(estimatePDE_IVm)[c(1,2,3,4,5)]
     }
 }
 save(TauAll,coefMTauLM,coefMTauLMNaive,coefMTauIV,coefTauLL,estimateTauLL,AICR2LMNaive,AICR2LM,AICR2IV,AICR2LL,y0yT,file="../datasets_montecarlo/montecarloPDETauGrid.RData")
+
+## AIC plot ----
+load(file="../datasets_montecarlo/montecarloPDETauGrid.RData")
+
+library(latex2exp)
+dev.new()
+plot(TauAll,(AICR2LM[,1]),type="p",ylab="",pch=1,xlab = TeX(r'($\tau$)'),xaxt="n",lwd=1.5,ylim=range(AICR2LMNaive[,1],AICR2LM[,1],AICR2IV[,1],AICR2LL[,1]))
+lines(TauAll,(AICR2LMNaive[,1]),type="p",col="red",pch=2,lwd = 1.5, xaxt="n")
+lines(TauAll,(AICR2IV[,1]),type="p",col="blue",pch=3,lwd = 1.5,xaxt="n")
+lines(TauAll,(AICR2LL[,1]),type="p",col="purple",pch=4,lwd = 1.5,xaxt="n")
+axis(1, at = TauAll, label = c("(B) 0.1","0.25","0.50","0.75","(COARSEST) 1"))
+grid()
+title(ylab = "AICc",mgp=c(2,0,0))
+sapply(TauAll,FUN = function(x) return(abline(v = x,lty=3)) );
+legend("bottomleft",legend=c("OLS NAIVE","OLS","IV","ML"),col=c("red","black","blue","purple"),lty=1,lwd=1.5,cex=1.0,pch=c(2,1,3,4))
+dev.copy2pdf(file="../datasets_montecarlo/montecarloPDEAICcTau.pdf")
 
 ## robust SE ----
 library(latex2exp)
@@ -821,10 +873,13 @@ PDE0 = PDEAll$PDE0
 PDET = PDEAll$PDET
 
 #For s
-SComputed = call_julia_computeS(NeS)
-Xs = SComputed$X
-Ys = SComputed$Y
-S = SComputed$S
+# SComputed = call_julia_computeS(NeS)
+# Xs = SComputed$X
+# Ys = SComputed$Y
+# S = SComputed$S
+Xs = matrix(0,nrow=NeS,ncol=NeS)
+Ys = matrix(0,nrow=NeS,ncol=NeS)
+S = matrix(0,nrow=NeS,ncol=NeS)
 
 data_shp = createDataframePDE(PDE0, PDET, Xpde, Ypde, shpMC, tau, Xs, Ys, S)
 data = data_shp$data
@@ -835,10 +890,12 @@ shp = data_shp$shp_sf
 MsDeriv = GFDM(data,torus=TRUE)
 D = compute_D(data,longlat=FALSE,torus=TRUE)
 WhA = compute_WhAR(D,data,SARDp$hA)
-WhR = compute_WhAR(D,data,SARDp$hR)
+WhR = compute_WhAR(D,data,SARDp$hR)x
+xS = runif(Np)
 xA = compute_xAR(data,MsDeriv, WhA)
 xR = compute_xAR(data,MsDeriv, WhR)
 xD = compute_xD(data,MsDeriv)
+MS = matrix(data=0, nrow=nrow(MD),ncol=nrow(MD))
 MA = compute_MARLag(data,MsDeriv,WhA)
 MR = compute_MARLag(data,MsDeriv,WhR)
 MD = compute_MDLag(MsDeriv)
@@ -849,9 +906,16 @@ plot(shp[c("y0","yT","delta","xA","xR","xD")])
 ## estimate PDE LL
 estimatePDE_LM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
 estimatePDE_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
+coefLM = coef(estimatePDE_LM$LM_est)
+coefLM = c(coefLM[c(1,2)],0,coefLM[c(3,5,7)],0,coefLM[c(4,6,8)])
+WN_SARD_OLS_BYSARD = LogLikAICcR2(data, c(coefLM,0), 10, xS, xA, xR, xD, MS, MA, MR, MD, diag(nrow(data)))
+
+
 estimatePDE_IV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
 estimatePDE_LL = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
 save(estimatePDE_LM_NAIVE,estimatePDE_LM,estimatePDE_IV,estimatePDE_LL, file = "../datasets_montecarlo/EstimateWORST.RData")
+
+load("../datasets_montecarlo/EstimateWORST.RData")
 
 coefLL = estimatePDE_LL$outARD_3MatEstimate$coef[c(1,2,3,4,5)]
 covBeta = estimatePDE_LL$outARD_3MatEstimate$covBeta
@@ -866,6 +930,10 @@ X = as.matrix(X)
 MA2X=as.matrix(MA %*% MA %*% X)
 MR2X=as.matrix(MR %*% MR %*% X) 
 MD2X=as.matrix(MD %*% MD %*% X)
+MADelta = as.numeric(MA %*% matrix(data$delta))
+MRDelta = as.numeric(MR %*% matrix(data$delta))
+MDDelta = as.numeric(MD %*% matrix(data$delta))
+set.seed(1)
 for (m in 1:Nm){
     # print(m)
     
@@ -938,24 +1006,32 @@ coefNpLL = apply(coefMLL,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
 seLL  = apply(coefMLL,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
 
 round(coefLMNaive,digits = 5)
-round(estimatePDE_LM_NAIVE$AICc,digits = 2) 
-round(estimatePDE_LM_NAIVE$R2, digits = 4)
+round(coefLMNaive - c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD),digits=5)
 round(seLMNaive, digits = 5)
+round(sqrt(1/Nm * colSums((coefMLMNaive-c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD))^2,na.rm=T)),digits=5)
+round(estimatePDE_LM_NAIVE$AICc,digits = 2) 
+round(estimatePDE_LM_NAIVE$R2, digits = 5)
 
 round(coefLM,digits = 5)
-round(estimatePDE_LM$AICc,digits = 2) 
-round(estimatePDE_LM$R2, digits = 4)
+round(coefLM - c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD),digits=5)
 round(seLM, digits = 5)
+round(sqrt(1/Nm * colSums((coefMLM-c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD))^2,na.rm=T)),digits=5)
+round(estimatePDE_LM$R2, digits = 5)
+round(estimatePDE_LM$AICc,digits = 2) 
 
 round(coefIV,digits = 5)
-round(estimatePDE_IV$AICc,digits = 2) 
-round(estimatePDE_IV$R2, digits = 4)
+round(coefIV - c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD),digits=5)
 round(seIV, digits = 5)
+round(sqrt(1/Nm * colSums((coefMIV-c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD))^2,na.rm=T)),digits=5)
+round(estimatePDE_IV$AICc,digits = 2) 
+round(estimatePDE_IV$R2, digits = 5)
 
 round(coefLL,digits = 5)
-round(estimatePDE_LL$AICc,digits = 2) 
-round(estimatePDE_LL$R2, digits = 4)
+round(coefLL - c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD),digits=5)
 round(seLL, digits = 5)
+round(sqrt(1/Nm * colSums((coefMLL-c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD))^2,na.rm=T)),digits=5)
+round(estimatePDE_LL$AICc,digits = 2) 
+round(estimatePDE_LL$R2, digits = 5)
 
 
 # BEST CASE ----
@@ -979,10 +1055,14 @@ PDE0 = PDEAll$PDE0
 PDET = PDEAll$PDET
 
 #For s
-SComputed = call_julia_computeS(NeS)
-Xs = SComputed$X
-Ys = SComputed$Y
-S = SComputed$S
+# SComputed = call_julia_computeS(NeS)
+# Xs = SComputed$X
+# Ys = SComputed$Y
+# S = SComputed$S
+Xs = matrix(0,nrow=NeS,ncol=NeS)
+Ys = matrix(0,nrow=NeS,ncol=NeS)
+S = matrix(0,nrow=NeS,ncol=NeS)
+
 
 data_shp = createDataframePDE(PDE0, PDET, Xpde, Ypde, shpMC, tau, Xs, Ys, S)
 data = data_shp$data
@@ -997,9 +1077,11 @@ WhR = compute_WhAR(D,data,SARDp$hR)
 xA = compute_xAR(data,MsDeriv, WhA)
 xR = compute_xAR(data,MsDeriv, WhR)
 xD = compute_xD(data,MsDeriv)
+xS = runif(Np)
 MA = compute_MARLag(data,MsDeriv,WhA)
 MR = compute_MARLag(data,MsDeriv,WhR)
 MD = compute_MDLag(MsDeriv)
+MS = matrix(data=0, nrow=nrow(MD),ncol=nrow(MD))
 shp = cbind(shp,xA,xR,xD)
 plot(shp[c("y0","yT","delta","xA","xR","xD")])
 
@@ -1007,6 +1089,10 @@ plot(shp[c("y0","yT","delta","xA","xR","xD")])
 ## estimate PDE LL
 estimatePDE_LM_NAIVE = estimate_ARD_MC_LM_NAIVE(data,shp,xA,xR,xD,MA,MR,MD)
 estimatePDE_LM = estimate_ARD_MC_LM(data,shp,xA,xR,xD,MA,MR,MD)
+coefLM = coef(estimatePDE_LM$LM_est)
+coefLM = c(coefLM[c(1,2)],0,coefLM[c(3,5,7)],0,coefLM[c(4,6,8)])
+WN_SARD_OLS_BYSARD = LogLikAICcR2(data, c(coefLM,0), 10, xS, xA, xR, xD, MS, MA, MR, MD, diag(nrow(data)))
+
 estimatePDE_IV = estimate_ARD_MC_IV(data,shp,xA,xR,xD,MA,MR,MD)
 estimatePDE_LL = estimate_ARD_MC_LL(data,shp,xA,xR,xD,MA,MR,MD)
 save(estimatePDE_LM_NAIVE,estimatePDE_LM,estimatePDE_IV,estimatePDE_LL, file = "../datasets_montecarlo/EstimateBEST.RData")
@@ -1025,8 +1111,12 @@ X = as.matrix(X)
 MA2X=as.matrix(MA %*% MA %*% X)
 MR2X=as.matrix(MR %*% MR %*% X) 
 MD2X=as.matrix(MD %*% MD %*% X)
+MADelta = as.numeric(MA %*% matrix(data$delta))
+MRDelta = as.numeric(MR %*% matrix(data$delta))
+MDDelta = as.numeric(MD %*% matrix(data$delta))
+set.seed(1)
 for (m in 1:Nm){
-    # print(m)
+    print(m)
     
     iBoot = sample(1:nrow(data),replace=T)
     datam = data[iBoot,]
@@ -1097,38 +1187,204 @@ coefNpLL = apply(coefMLL,MARGIN=2,FUN=function(x) mean(x,na.rm=T))
 seLL  = apply(coefMLL,MARGIN=2,FUN=function(x) sd(x,na.rm=T))
 
 round(coefLMNaive,digits = 5)
+round(coefLMNaive - c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD),digits=5)
+round(seLMNaive, digits = 5)
+round(sqrt(1/Nm * colSums((coefMLMNaive-c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD))^2)),digits=5)
 round(estimatePDE_LM_NAIVE$AICc,digits = 2) 
 round(estimatePDE_LM_NAIVE$R2, digits = 5)
-round(seLMNaive, digits = 5)
 
 round(coefLM,digits = 5)
-round(estimatePDE_LM$AICc,digits = 2) 
-round(estimatePDE_LM$R2, digits = 5)
+round(coefLM - c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD),digits=5)
 round(seLM, digits = 5)
+round(sqrt(1/Nm * colSums((coefMLM-c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD))^2)),digits=5)
+round(estimatePDE_LM$R2, digits = 5)
+round(estimatePDE_LM$AICc,digits = 2) 
 
 round(coefIV,digits = 5)
+round(coefIV - c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD),digits=5)
+round(seIV, digits = 5)
+round(sqrt(1/Nm * colSums((coefMIV-c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD))^2)),digits=5)
 round(estimatePDE_IV$AICc,digits = 2) 
 round(estimatePDE_IV$R2, digits = 5)
-round(seIV, digits = 5)
 
 round(coefLL,digits = 5)
+round(coefLL - c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD),digits=5)
+round(seLL, digits = 5)
+round(sqrt(1/Nm * colSums((coefMLL-c(SARDp$alpha,SARDp$phi,SARDp$gammaA,SARDp$gammaR,SARDp$gammaD))^2)),digits=5)
 round(estimatePDE_LL$AICc,digits = 2) 
 round(estimatePDE_LL$R2, digits = 5)
-round(seLL, digits = 5)
 
 
 
 # Analysis of Wepsilon for different Np and tau----
-# insert cosa carichiamo
-lambdaHat = vector("numeric",length(Np))
-lambdas = matrix(NA, nrow=length(Np), ncol=10)
-maxLag = vector("numeric",length(Np))
-for (i in 1:length(Np)){
-    lambdaHat[i] = round(estimateNpLL[[i]]$outARD_3MatEstimate$coef[length(estimateNpLL[[i]]$outARD_3MatEstimate$coef)], digits=3)
-    lambdas[i,] = round(coef(estimateNpLL[[i]]$SpatError$lm.errDecompose), digits=3)
-    maxLag[i] = estimateNpLL[[i]]$SpatError$maxSignifLag
-}
+load(file="../datasets_montecarlo/EstimateWORST.RData")
+worstLL = estimatePDE_LL
+load(file="../datasets_montecarlo/EstimateBEST.RData")
+besttLL = estimatePDE_LL
 
-tableW = cbind(round(Np, digits=0), lambdaHat, lambdas, maxLag)
-colnames(tableW) = c("Np", "lambda hat", paste("lambdaHat",seq(1:10)), "max lag")
-print(xtable(tableW), include.rownames=FALSE)
+worstLambdaHat = worstLL$outARD_3MatEstimate$coef[length(worstLL$outARD_3MatEstimate$coef)]
+bestLambdaHat = besttLL$outARD_3MatEstimate$coef[length(besttLL$outARD_3MatEstimate$coef)]
+
+worstLambdaHatSE = worstLL$outARD_3MatEstimate$se_coef[length(worstLL$outARD_3MatEstimate$coef)]
+bestLambdaHatSE = besttLL$outARD_3MatEstimate$se_coef[length(besttLL$outARD_3MatEstimate$coef)]
+
+worstLambdas = round(coef(worstLL$SpatError$lm.errDecompose), digits=3)
+bestLambdas = round(coef(besttLL$SpatError$lm.errDecompose), digits=3)
+
+worstLambdasSE = round(sqrt(diag(vcov((worstLL$SpatError$lm.errDecompose)))), digits=3)
+bestLambdasSE = round(sqrt(diag(vcov((besttLL$SpatError$lm.errDecompose)))),  digits=3)
+
+
+worstMaxLag= worstLL$SpatError$maxSignifLag
+bestMaxLag= besttLL$SpatError$maxSignifLag
+
+## Analysis residuals ----
+Na=100
+Nm = 1000
+tau= 1.0
+NeS = 100
+SARDp = list(alpha = 0.01, phi = 0.01, gammaS = 0.0, gammaA = -0.00175, gammaR = 0.0025, gammaD = 0.00525, hA = 0.15, hR = 0.4)
+
+# PDE once
+PDEAll = call_julia_computePDE(tau,SARDp)
+save(PDEAll,file="../datasets_montecarlo/PDE.RData")
+
+
+Np = 144
+
+## create PDE shape 
+shpMC = createShape(Np, typeOfDist = "Uniform")
+Xpde = PDEAll$X
+Ypde = PDEAll$Y
+PDE0 = PDEAll$PDE0
+PDET = PDEAll$PDET
+#For s
+Xs = matrix(0,nrow=NeS,ncol=NeS)
+Ys = matrix(0,nrow=NeS,ncol=NeS)
+S = matrix(0,nrow=NeS,ncol=NeS)
+
+# SComputed = call_julia_computeS(NeS)
+# Xs = SComputed$X
+# Ys = SComputed$Y
+# S = SComputed$S
+
+data_shp = createDataframePDE(PDE0, PDET, Xpde, Ypde, shpMC, tau, Xs, Ys, S)
+data = data_shp$data
+shp = data_shp$shp_sf
+
+
+MsDeriv = GFDM(data,torus=TRUE)
+D = compute_D(data,longlat=FALSE,torus=TRUE)
+WhA = compute_WhAR(D,data,SARDp$hA)
+WhR = compute_WhAR(D,data,SARDp$hR)
+xA = compute_xAR(data,MsDeriv, WhA)
+xR = compute_xAR(data,MsDeriv, WhR)
+xD = compute_xD(data,MsDeriv)
+MA = compute_MARLag(data,MsDeriv,WhA)
+MR = compute_MARLag(data,MsDeriv,WhR)
+MD = compute_MDLag(MsDeriv)
+shp = cbind(shp,xA,xR,xD)
+
+errorST = as.numeric(shp$delta - SARDp$alpha - SARDp$phi*shp$y0 - SARDp$gammaA*xA - SARDp$gammaR*xR - SARDp$gammaD*xD 
+    - tau/2*SARDp$gammaA*MA %*% shp$delta - tau/2*SARDp$gammaR*MR %*% shp$delta - tau/2*SARDp$gammaD*MD %*% shp$delta)
+
+shp = cbind(shp, errorST)
+dev.new()
+plot(shp["errorST"],main="")
+dev.copy2pdf(file="../datasets_montecarlo/residual2500NoFilter.pdf")
+
+dev.new()
+plot(shp["errorSTFilter"],main="")
+dev.copy2pdf(file="../datasets_montecarlo/residual2500Filter.pdf")
+
+
+SpatError = compute_spatial_error_mat(errorST,shp,maxLag = 10, pThreshold = 0.1)
+Werr = SpatError$Werr
+
+
+errorSTFilter = as.numeric(errorST - Werr %*% errorST)
+shp = cbind(shp, errorSTFilter)
+plot(shp["errorST"],breaks = seq(from=-0.4,to=0.4,by=0.05),main="",key.pos=1)
+plot(shp["errorSTFilter"],breaks = seq(from=-0.4,to=0.4,by=0.05),main="",key.pos=1)
+plot(shp[c("errorST","errorSTFilter")],main="",key.pos=4)
+save(shp,SpatError,file="../datasets_montecarlo/MCerror144.RData")
+
+
+### plot ----
+load("../datasets_montecarlo/MCerror2500.RData")
+shp2500 = shp
+SpatError2500 = SpatError
+load("../datasets_montecarlo/MCerror10000.RData")
+shp10000 = shp
+SpatError10000 = SpatError
+
+
+
+qqPre = qqnorm(shp10000$errorST,plot.it = F)
+qqPost = qqnorm(shp10000$errorSTFilter,plot.it = F)
+plot(qqPre$x,qqPre$y,main="qq 10000")
+points(qqPost$x,qqPost$y,col="red")
+
+qq2500 = qqnorm(shp2500$errorSTFilter,plot.it = F)
+qq10000 = qqnorm(shp10000$errorSTFilter,plot.it = F)
+plot(qq2500$x,qq2500$y,main="qq 2500 vs 10000 Filter")
+points(qq10000$x,qq10000$y,col="red")
+
+sm.density(shp2500$errorSTFilter,model="Normal",ylim=c(0,20))
+sm.density(shp10000$errorSTFilter,model="Normal",ylim=c(0,5))
+
+library(kldest)
+kld_est(shp2500$errorST,q=function(x) dnorm(x,mean=mean(shp2500$errorST),sd=sd(shp2500$errorST)))
+kld_est(shp2500$errorSTFilter,q=function(x) dnorm(x,mean=mean(shp2500$errorSTFilter),sd=sd(shp2500$errorSTFilter)))
+kld_est(shp10000$errorST,q=function(x) dnorm(x,mean=mean(shp10000$errorST),sd=sd(shp10000$errorST)))
+kld_est(shp10000$errorSTFilter,q=function(x) dnorm(x,mean=mean(shp10000$errorSTFilter),sd=sd(shp10000$errorSTFilter)))
+
+
+## plot correlogram ----
+### 2500 ----
+load("../datasets_montecarlo/MCerror2500.RData")
+shp2500 = shp
+maxLag = 10
+correlogramm2500 = correlogram(shp2500$errorST,shp2500,maxLag = maxLag)
+correlogramm2500Filter = correlogram(shp2500$errorSTFilter,shp2500,maxLag = maxLag)
+
+coeffCorrelogramm2500 = correlogramm2500$correlogram_resid$res[,1]
+SECorrelogramm2500 = sqrt(correlogramm2500$correlogram_resid$res[,3])
+coeffCorrelogramm2500Filter = correlogramm2500Filter$correlogram_resid$res[,1]
+SECorrelogramm2500Filter = sqrt(correlogramm2500Filter$correlogram_resid$res[,3])
+
+
+dev.new()
+plot(1:maxLag,coeffCorrelogramm2500,xlab="Lag",ylab="Moran's I",pch=18,ylim=range(coeffCorrelogramm2500-1.96*SECorrelogramm2500,coeffCorrelogramm2500+1.96*SECorrelogramm2500,coeffCorrelogramm2500Filter-1.96*SECorrelogramm2500Filter,coeffCorrelogramm2500Filter+1.96*SECorrelogramm2500Filter),xlim=c(1,maxLag))
+axis(side = 1, at = 1:maxLag)
+arrows(1:maxLag,coeffCorrelogramm2500-1.96*SECorrelogramm2500,1:maxLag,coeffCorrelogramm2500+1.96*SECorrelogramm2500,length=0.1,angle=90,code=3)
+points(1:maxLag,coeffCorrelogramm2500Filter,xlab="Lag",ylab="Moran's I",pch=18,col="red")
+arrows(1:maxLag,coeffCorrelogramm2500Filter-1.96*SECorrelogramm2500Filter,1:maxLag,coeffCorrelogramm2500Filter+1.96*SECorrelogramm2500Filter,length=0.1,angle=90,code=3,col="red")
+abline(h=0)
+grid()
+legend("topright",legend=c("Reminder before filtering","Reminder after filtering"),col=c("black","red"),lty=1,lwd=1.5,cex=1.0)
+dev.copy2pdf(file="../datasets_montecarlo/correlogramm2500.pdf")
+
+### 144 ----
+load("../datasets_montecarlo/MCerror144.RData")
+shp144 = shp
+maxLag = 10
+correlogramm144 = correlogram(shp144$errorST,shp144,maxLag = maxLag)
+correlogramm144Filter = correlogram(shp144$errorSTFilter,shp144,maxLag = maxLag)
+
+coeffCorrelogramm144 = correlogramm144$correlogram_resid$res[,1]
+SECorrelogramm144 = sqrt(correlogramm144$correlogram_resid$res[,3])
+coeffCorrelogramm144Filter = correlogramm144Filter$correlogram_resid$res[,1]
+SECorrelogramm144Filter = sqrt(correlogramm144Filter$correlogram_resid$res[,3])
+
+
+dev.new()
+plot(1:maxLag,coeffCorrelogramm144,xlab="lags",ylab="Moran's I",pch=18,ylim=range(coeffCorrelogramm144-1.96*SECorrelogramm144,coeffCorrelogramm144+1.96*SECorrelogramm144,coeffCorrelogramm144Filter-1.96*SECorrelogramm144Filter,coeffCorrelogramm144Filter+1.96*SECorrelogramm144Filter),xlim=c(1,maxLag))
+axis(side = 1, at = 1:maxLag)
+arrows(1:maxLag,coeffCorrelogramm144-1.96*SECorrelogramm144,1:maxLag,coeffCorrelogramm144+1.96*SECorrelogramm144,length=0.1,angle=90,code=3)
+points(1:maxLag,coeffCorrelogramm144Filter,xlab="lags",ylab="Moran's I",pch=18,col="red")
+arrows(1:maxLag,coeffCorrelogramm144Filter-1.96*SECorrelogramm144Filter,1:maxLag,coeffCorrelogramm144Filter+1.96*SECorrelogramm144Filter,length=0.1,angle=90,code=3,col="red")
+abline(h=0)
+legend("topright",legend=c("reminder","reminder after filtering"),col=c("black","red"),lty=1,lwd=1.5,cex=1.0)
+dev.copy2pdf(file="../datasets_montecarlo/correlogramm144.pdf")
+

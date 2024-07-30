@@ -33,6 +33,7 @@ source("lib/L_spatialModels.R")
 source("lib/L_GFDM.R")
 source("lib/L_maps.R")
 source("lib/L_forecast.R")
+source("lib/L_forecastSpatial.R")
 source("lib/L_MonteCarloGeneration.R")
 source("lib/L_MonteCarloEstimation.R")
 
